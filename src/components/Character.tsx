@@ -1,7 +1,3 @@
-import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
-import * as THREE from 'three';
 import type { Character as CharacterType } from '../types';
 
 interface CharacterProps {
@@ -10,77 +6,39 @@ interface CharacterProps {
 }
 
 export default function Character({ character, animate = true }: CharacterProps) {
-  const group = useRef<THREE.Group>(null);
-
-  // Basic animation
-  useFrame((state) => {
-    if (animate && group.current) {
-      // Gentle floating animation
-      group.current.position.y = Math.sin(state.clock.elapsedTime) * 0.1;
-      // Subtle rotation
-      group.current.rotation.y += 0.01;
-    }
-  });
-
   return (
-    <group ref={group}>
-      {/* Body */}
-      <mesh position={[0, 0, 0]}>
-        <capsuleGeometry args={[0.5, 1, 4, 8]} />
-        <meshStandardMaterial color={character.appearance.color} />
-      </mesh>
-
-      {/* Head */}
-      <mesh position={[0, 1, 0]}>
-        <sphereGeometry args={[0.4, 32, 32]} />
-        <meshStandardMaterial color={character.appearance.color} />
-      </mesh>
-
-      {/* Eyes */}
-      <mesh position={[0.15, 1.1, 0.3]}>
-        <sphereGeometry args={[0.08, 32, 32]} />
-        <meshStandardMaterial color="white" />
-      </mesh>
-      <mesh position={[-0.15, 1.1, 0.3]}>
-        <sphereGeometry args={[0.08, 32, 32]} />
-        <meshStandardMaterial color="white" />
-      </mesh>
-
-      {/* Pupils */}
-      <mesh position={[0.15, 1.1, 0.38]}>
-        <sphereGeometry args={[0.04, 32, 32]} />
-        <meshStandardMaterial color="black" />
-      </mesh>
-      <mesh position={[-0.15, 1.1, 0.38]}>
-        <sphereGeometry args={[0.04, 32, 32]} />
-        <meshStandardMaterial color="black" />
-      </mesh>
+    <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-md">
+      {/* Character Avatar */}
+      <div 
+        className={`w-24 h-24 rounded-full mb-4 flex items-center justify-center text-white text-2xl font-bold ${animate ? 'animate-bounce' : ''}`}
+        style={{ backgroundColor: character.appearance.color }}
+      >
+        {character.name[0].toUpperCase()}
+      </div>
 
       {/* Level indicator */}
-      <Text
-        position={[0, 1.8, 0]}
-        fontSize={0.2}
-        color="white"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {`Level ${character.level}`}
-      </Text>
+      <div className="text-lg font-semibold mb-2">
+        Level {character.level}
+      </div>
+
+      {/* Character Name */}
+      <div className="text-xl font-bold mb-2">
+        {character.name}
+      </div>
 
       {/* Accessories */}
-      {character.appearance.accessories.map((accessory, index) => (
-        <AccessoryItem key={index} type={accessory} position={[0, 0, 0]} />
-      ))}
-    </group>
+      {character.appearance.accessories.length > 0 && (
+        <div className="flex gap-2 mt-2">
+          {character.appearance.accessories.map((accessory, index) => (
+            <div 
+              key={index}
+              className="px-2 py-1 bg-gray-100 rounded-md text-sm"
+            >
+              {accessory}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
-}
-
-interface AccessoryProps {
-  type: string;
-  position: [number, number, number];
-}
-
-function AccessoryItem({ type, position }: AccessoryProps) {
-  // Add different accessory types here (hats, weapons, etc.)
-  return null;
 }
