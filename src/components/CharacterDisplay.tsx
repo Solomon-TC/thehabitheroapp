@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
 import { supabase } from '../lib/supabase';
 import Character from './Character';
 import type { Character as CharacterType } from '../types';
@@ -21,7 +19,7 @@ export default function CharacterDisplay({ character, isPreview = false }: Chara
 
   if (loading) {
     return (
-      <div className="game-card h-[600px] flex items-center justify-center">
+      <div className="h-[600px] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
       </div>
     );
@@ -32,24 +30,19 @@ export default function CharacterDisplay({ character, isPreview = false }: Chara
   }
 
   return (
-    <div className={`character-card space-y-6 ${isPreview ? 'h-48' : 'h-[600px]'}`}>
+    <div className={`space-y-6 ${isPreview ? 'h-48' : 'h-auto'}`}>
       {!isPreview && (
         <div className="flex justify-between items-center">
-          <h2 className="game-title text-xl">{character.name}</h2>
+          <h2 className="text-xl font-bold">{character.name}</h2>
           <div className="flex items-center space-x-2">
-            <span className="text-white/80">Level</span>
-            <div className="level-badge">{character.level}</div>
+            <span className="text-gray-600">Level</span>
+            <div className="px-2 py-1 bg-blue-500 text-white rounded-md">{character.level}</div>
           </div>
         </div>
       )}
 
-      <div className={`${isPreview ? 'h-full' : 'h-64'} bg-gradient-radial from-white/5 to-transparent rounded-lg`}>
-        <Canvas camera={{ position: [0, 0, 5] }}>
-          <ambientLight intensity={0.5} />
-          <pointLight position={[10, 10, 10]} />
-          <Character character={character} />
-          <OrbitControls enableZoom={false} />
-        </Canvas>
+      <div className={`${isPreview ? 'h-full' : 'h-64'} bg-gradient-to-b from-gray-50 to-white rounded-lg p-4`}>
+        <Character character={character} />
       </div>
 
       {!isPreview && (
@@ -57,31 +50,31 @@ export default function CharacterDisplay({ character, isPreview = false }: Chara
           {/* Experience Bar */}
           <div className="space-y-1">
             <div className="flex justify-between text-sm">
-              <span className="text-white/80">Experience</span>
-              <span className="text-game-exp">{character.experience} XP</span>
+              <span className="text-gray-600">Experience</span>
+              <span className="text-blue-600">{character.experience} XP</span>
             </div>
-            <div className="progress-bar exp-bar">
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div
-                className="progress-bar-fill"
+                className="h-full bg-blue-500 transition-all duration-300"
                 style={{ width: `${(character.experience % 100)}%` }}
               />
             </div>
           </div>
 
-          {/* Attributes */}
+          {/* Stats */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Attributes</h3>
+            <h3 className="text-lg font-medium">Stats</h3>
             <div className="grid grid-cols-2 gap-4">
-              {Object.entries(character.attributes).map(([attr, value]) => (
-                <div key={attr} className="space-y-1">
+              {Object.entries(character.stats).map(([stat, value]) => (
+                <div key={stat} className="space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span className="capitalize text-white/80">{attr}</span>
-                    <span>{value}/10</span>
+                    <span className="capitalize text-gray-600">{stat}</span>
+                    <span>{value}</span>
                   </div>
-                  <div className="progress-bar">
+                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
-                      className="progress-bar-fill bg-primary-500"
-                      style={{ width: `${(value / 10) * 100}%` }}
+                      className="h-full bg-blue-500 transition-all duration-300"
+                      style={{ width: `${(value / 20) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -89,40 +82,17 @@ export default function CharacterDisplay({ character, isPreview = false }: Chara
             </div>
           </div>
 
-          {/* Custom Attributes */}
-          {Object.keys(character.custom_attributes).length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Custom Attributes</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {Object.entries(character.custom_attributes).map(([attr, value]) => (
-                  <div key={attr} className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="capitalize text-white/80">{attr}</span>
-                      <span>{value}/10</span>
-                    </div>
-                    <div className="progress-bar">
-                      <div
-                        className="progress-bar-fill bg-accent-500"
-                        style={{ width: `${(value / 10) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Achievements */}
-          {character.appearance.achievements.length > 0 && (
+          {character.achievements.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-lg font-medium">Recent Achievements</h3>
               <div className="flex flex-wrap gap-2">
-                {character.appearance.achievements.slice(-3).map((achievement, index) => (
+                {character.achievements.slice(-3).map((achievement) => (
                   <div
-                    key={index}
-                    className="achievement-badge"
+                    key={achievement.id}
+                    className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
                   >
-                    {achievement}
+                    {achievement.name}
                   </div>
                 ))}
               </div>
