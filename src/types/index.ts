@@ -33,3 +33,12 @@ export interface Character {
     deadline: string | null;
   }[];
 }
+
+export type CoreAttributeType = 'strength' | 'agility' | 'wisdom' | 'charisma';
+
+export const CORE_ATTRIBUTES: CoreAttributeType[] = [
+  'strength',
+  'agility',
+  'wisdom',
+  'charisma'
+];

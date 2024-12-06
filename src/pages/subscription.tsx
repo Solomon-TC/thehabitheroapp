@@ -1,181 +1,119 @@
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
-import { supabase } from '../lib/supabase';
-import { getSubscriptionStatus } from '../lib/stripe';
-import SubscriptionStatus from '../components/SubscriptionStatus';
-import { useNotification } from '../contexts/NotificationContext';
+import Layout from '../components/Layout';
 
-export default function SubscriptionPage() {
-  const [userId, setUserId] = useState<string | null>(null);
-  const [status, setStatus] = useState<'active' | 'inactive'>('inactive');
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-  const { showNotification } = useNotification();
-  const { redirectTo } = router.query;
+export default function Subscription() {
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
+    setIsLoading(false);
   }, []);
 
-  const checkAuth = async () => {
-    try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) throw error;
-      
-      if (!session) {
-        router.push('/auth');
-        return;
-      }
-
-      setUserId(session.user.id);
-      const subscriptionStatus = await getSubscriptionStatus(session.user.id);
-      setStatus(subscriptionStatus);
-
-      if (subscriptionStatus === 'active' && redirectTo) {
-        router.push(redirectTo as string);
-      }
-    } catch (error) {
-      console.error('Error checking auth status:', error);
-      showNotification('Failed to load subscription status', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gradient-start to-gradient-end flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
-      </div>
+      <Layout>
+        <div className="flex justify-center items-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gradient-start to-gradient-end">
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <div className="space-y-8">
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold">Level Up Your Journey</h1>
-            <p className="text-xl text-white/60">
-              Unlock premium features to enhance your habit-building experience
-            </p>
-          </div>
-
-          {userId && (
-            <SubscriptionStatus status={status} userId={userId} />
-          )}
-
-          <div className="game-card p-6">
-            <h2 className="text-2xl font-bold mb-4">Premium Features</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-primary-400">
-                  Advanced Tracking
-                </h3>
-                <ul className="space-y-2 text-white/60">
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Detailed habit analytics
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Progress visualization
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Custom habit categories
-                  </li>
-                </ul>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-primary-400">
-                  Character Features
-                </h3>
-                <ul className="space-y-2 text-white/60">
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Unique character themes
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Special abilities
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Character customization
-                  </li>
-                </ul>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-primary-400">
-                  Social Features
-                </h3>
-                <ul className="space-y-2 text-white/60">
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Friend challenges
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Leaderboards
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Group achievements
-                  </li>
-                </ul>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold text-primary-400">
-                  Support
-                </h3>
-                <ul className="space-y-2 text-white/60">
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Priority support
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Feature requests
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Early access
-                  </li>
-                </ul>
-              </div>
+    <Layout>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">Subscription Plans</h1>
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Subscription features are currently under development. Please check back later!
+              </p>
             </div>
           </div>
         </div>
+        
+        <div className="grid md:grid-cols-2 gap-8">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold mb-4">Free Plan</h2>
+            <ul className="space-y-3 mb-6">
+              <li className="flex items-center">
+                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Track up to 5 habits
+              </li>
+              <li className="flex items-center">
+                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Basic character customization
+              </li>
+              <li className="flex items-center">
+                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Progress tracking
+              </li>
+            </ul>
+            <button
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+              disabled
+            >
+              Current Plan
+            </button>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-lg p-6 border-2 border-blue-500">
+            <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 rounded-bl-lg text-sm">
+              Coming Soon
+            </div>
+            <h2 className="text-2xl font-bold mb-4">Premium Plan</h2>
+            <ul className="space-y-3 mb-6">
+              <li className="flex items-center">
+                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Unlimited habits
+              </li>
+              <li className="flex items-center">
+                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Advanced character customization
+              </li>
+              <li className="flex items-center">
+                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Detailed analytics
+              </li>
+              <li className="flex items-center">
+                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Friend system
+              </li>
+              <li className="flex items-center">
+                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Priority support
+              </li>
+            </ul>
+            <button
+              className="w-full bg-gray-300 text-gray-600 py-2 px-4 rounded-md cursor-not-allowed"
+              disabled
+            >
+              Coming Soon
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 }
