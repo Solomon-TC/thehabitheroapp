@@ -1,303 +1,169 @@
 import { useEffect, useState } from 'react';
-import Layout from '../components/Layout';
-import CharacterDisplay from '../components/CharacterDisplay';
+import { supabase } from '../lib/supabase';
+import { Habit, Goal } from '../types';
 import AddHabitForm from '../components/AddHabitForm';
 import AddGoalForm from '../components/AddGoalForm';
-import { supabase } from '../lib/supabase';
-import { calculateCharacterProgression, getProgressionMessages } from '../utils/characterProgression';
-import { useGameNotifications } from '../contexts/NotificationContext';
-import type { Habit, Goal, Character } from '../types';
+import { useNotification } from '../contexts/NotificationContext';
 
 export default function Dashboard() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [character, setCharacter] = useState<Character | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showAddHabit, setShowAddHabit] = useState(false);
-  const [showAddGoal, setShowAddGoal] = useState(false);
-
-  const {
-    notifyLevelUp,
-    notifyAttributeIncrease,
-    notifyAchievement,
-    notifyStreak,
-    notifyGoalComplete,
-    notifyError
-  } = useGameNotifications();
+  const [isLoading, setIsLoading] = useState(true);
+  const { showNotification } = useNotification();
 
   useEffect(() => {
-    fetchData();
+    fetchHabitsAndGoals();
   }, []);
 
-  const fetchData = async () => {
+  const fetchHabitsAndGoals = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Fetch character
-      const { data: characterData, error: characterError } = await supabase
-        .from('characters')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (characterError) throw characterError;
-      setCharacter(characterData);
-
-      // Fetch habits
-      const { data: habitsData, error: habitsError } = await supabase
-        .from('habits')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (habitsError) throw habitsError;
-      setHabits(habitsData || []);
-
-      // Fetch goals
-      const { data: goalsData, error: goalsError } = await supabase
-        .from('goals')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (goalsError) throw goalsError;
-      setGoals(goalsData || []);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      notifyError('Failed to load data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleHabitComplete = async (habit: Habit) => {
-    try {
-      // Log habit completion
-      const { error: logError } = await supabase.from('habit_logs').insert([
-        { 
-          habit_id: habit.id,
-          experience_gained: habit.experience_reward
-        }
-      ]);
-
-      if (logError) throw logError;
-
-      // Update character progression
-      if (character) {
-        const progressionResult = await calculateCharacterProgression(
-          character.id,
-          habit.experience_reward,
-          habit.attribute_type
-        );
-
-        // Show notifications for character progression
-        if (progressionResult.levelUp) {
-          notifyLevelUp(progressionResult.levelUp.newLevel);
-        }
-
-        Object.entries(progressionResult.attributeIncreases).forEach(([attr, value]) => {
-          notifyAttributeIncrease(attr, value);
-        });
-
-        progressionResult.newAchievements.forEach(achievement => {
-          notifyAchievement(achievement);
-        });
-
-        if (progressionResult.streakMilestone) {
-          notifyStreak(progressionResult.streakMilestone);
-        }
+      
+      if (!user) {
+        throw new Error('Not authenticated');
       }
 
-      fetchData(); // Refresh data
+      const [habitsResponse, goalsResponse] = await Promise.all([
+        supabase
+          .from('habits')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('goals')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+      ]);
+
+      if (habitsResponse.error) throw habitsResponse.error;
+      if (goalsResponse.error) throw goalsResponse.error;
+
+      setHabits(habitsResponse.data || []);
+      setGoals(goalsResponse.data || []);
     } catch (error) {
-      console.error('Error completing habit:', error);
-      notifyError('Failed to complete habit. Please try again.');
+      console.error('Error fetching data:', error);
+      showNotification('Failed to load your habits and goals', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const updateGoalProgress = async (goal: Goal, newProgress: number) => {
+  const completeHabit = async (habitId: string) => {
     try {
-      const wasCompleted = goal.status === 'completed';
-      const isNowCompleted = newProgress === 100;
-      
       const { error } = await supabase
-        .from('goals')
-        .update({ 
-          progress: newProgress,
-          status: newProgress === 100 ? 'completed' : 'in_progress'
-        })
-        .eq('id', goal.id);
+        .from('habit_logs')
+        .insert([{ habit_id: habitId }]);
 
       if (error) throw error;
 
-      // Award experience only when goal is newly completed
-      if (!wasCompleted && isNowCompleted) {
-        if (character) {
-          const progressionResult = await calculateCharacterProgression(
-            character.id,
-            goal.experience_reward,
-            goal.attribute_type
-          );
-
-          // Show notifications for character progression
-          if (progressionResult.levelUp) {
-            notifyLevelUp(progressionResult.levelUp.newLevel);
-          }
-
-          Object.entries(progressionResult.attributeIncreases).forEach(([attr, value]) => {
-            notifyAttributeIncrease(attr, value);
-          });
-
-          progressionResult.newAchievements.forEach(achievement => {
-            notifyAchievement(achievement);
-          });
-
-          notifyGoalComplete(goal.title);
-        }
-      }
-
-      fetchData(); // Refresh data
+      showNotification('Habit marked as complete!', 'success');
+      // You might want to update the UI or refetch the data here
     } catch (error) {
-      console.error('Error updating goal progress:', error);
-      notifyError('Failed to update goal progress. Please try again.');
+      console.error('Error completing habit:', error);
+      showNotification('Failed to mark habit as complete', 'error');
     }
   };
 
-  return (
-    <Layout>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Character Section */}
-        <div className="lg:col-span-1">
-          <CharacterDisplay />
-        </div>
+  const updateGoalStatus = async (goalId: string, status: Goal['status']) => {
+    try {
+      const { error } = await supabase
+        .from('goals')
+        .update({ status })
+        .eq('id', goalId);
 
-        {/* Habits and Goals Section */}
-        <div className="lg:col-span-2 space-y-6">
+      if (error) throw error;
+
+      setGoals(goals.map(goal => 
+        goal.id === goalId ? { ...goal, status } : goal
+      ));
+      
+      showNotification(`Goal ${status}!`, 'success');
+    } catch (error) {
+      console.error('Error updating goal:', error);
+      showNotification('Failed to update goal status', 'error');
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading your dashboard...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Your Dashboard</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Habits Section */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">My Habits</h2>
-              <button 
-                onClick={() => setShowAddHabit(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
-                Add Habit
-              </button>
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">Habits</h2>
+            <AddHabitForm />
+            <div className="mt-6 space-y-4">
+              {habits.map(habit => (
+                <div key={habit.id} className="bg-white p-4 rounded-lg shadow">
+                  <h3 className="font-medium">{habit.title}</h3>
+                  {habit.description && (
+                    <p className="text-gray-600 text-sm mt-1">{habit.description}</p>
+                  )}
+                  <div className="mt-3 flex justify-between items-center">
+                    <span className="text-sm text-gray-500">{habit.frequency}</span>
+                    <button
+                      onClick={() => completeHabit(habit.id)}
+                      className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600"
+                    >
+                      Complete
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-            {loading ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-              </div>
-            ) : habits.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No habits created yet</p>
-            ) : (
-              <ul className="space-y-4">
-                {habits.map((habit) => (
-                  <li key={habit.id} className="border rounded-lg p-4">
-                    <h3 className="font-medium text-gray-900">{habit.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{habit.description}</p>
-                    <div className="mt-2 flex justify-between items-center">
-                      <div>
-                        <span className="text-sm text-gray-600 mr-4">
-                          Streak: {habit.current_streak} days
-                        </span>
-                        <span className="text-sm text-gray-600">
-                          XP: {habit.experience_reward}
-                        </span>
-                      </div>
-                      <button 
-                        onClick={() => handleHabitComplete(habit)}
-                        className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
-                      >
-                        Complete
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
 
           {/* Goals Section */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">My Goals</h2>
-              <button 
-                onClick={() => setShowAddGoal(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
-                Add Goal
-              </button>
-            </div>
-            {loading ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-              </div>
-            ) : goals.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No goals created yet</p>
-            ) : (
-              <ul className="space-y-4">
-                {goals.map((goal) => (
-                  <li key={goal.id} className="border rounded-lg p-4">
-                    <h3 className="font-medium text-gray-900">{goal.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">{goal.description}</p>
-                    <div className="mt-2">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm text-gray-600">
-                          Progress: {goal.progress}%
-                        </span>
-                        <div className="flex items-center">
-                          <span className="text-sm text-gray-600 mr-4">
-                            XP: {goal.experience_reward}
-                          </span>
-                          <span className="text-sm text-gray-600">
-                            Due: {new Date(goal.target_date).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-500 rounded-full h-2"
-                          style={{ width: `${goal.progress}%` }}
-                        ></div>
-                      </div>
-                      <div className="mt-2 flex justify-end space-x-2">
-                        <button
-                          onClick={() => updateGoalProgress(goal, Math.min(goal.progress + 10, 100))}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm"
-                        >
-                          +10%
-                        </button>
-                        <button
-                          onClick={() => updateGoalProgress(goal, Math.max(goal.progress - 10, 0))}
-                          className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-sm"
-                        >
-                          -10%
-                        </button>
-                      </div>
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">Goals</h2>
+            <AddGoalForm />
+            <div className="mt-6 space-y-4">
+              {goals.map(goal => (
+                <div key={goal.id} className="bg-white p-4 rounded-lg shadow">
+                  <h3 className="font-medium">{goal.title}</h3>
+                  {goal.description && (
+                    <p className="text-gray-600 text-sm mt-1">{goal.description}</p>
+                  )}
+                  <div className="mt-3 flex justify-between items-center">
+                    <span className="text-sm text-gray-500">
+                      Status: {goal.status}
+                    </span>
+                    <div className="space-x-2">
+                      {goal.status === 'in_progress' && (
+                        <>
+                          <button
+                            onClick={() => updateGoalStatus(goal.id, 'completed')}
+                            className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600"
+                          >
+                            Complete
+                          </button>
+                          <button
+                            onClick={() => updateGoalStatus(goal.id, 'abandoned')}
+                            className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600"
+                          >
+                            Abandon
+                          </button>
+                        </>
+                      )}
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Add Habit Form Modal */}
-      {showAddHabit && (
-        <AddHabitForm
-          onClose={() => setShowAddHabit(false)}
-          onHabitAdded={fetchData}
-        />
-      )}
-
-      {/* Add Goal Form Modal */}
-      {showAddGoal && (
-        <AddGoalForm
-          onClose={() => setShowAddGoal(false)}
-          onGoalAdded={fetchData}
-        />
-      )}
-    </Layout>
+    </div>
   );
 }

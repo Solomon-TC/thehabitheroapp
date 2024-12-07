@@ -30,3 +30,13 @@ export interface User {
   email?: string;
   created_at: string;
 }
+
+export const CORE_ATTRIBUTES = {
+  strength: 'Strength',
+  intelligence: 'Intelligence',
+  willpower: 'Willpower',
+  discipline: 'Discipline',
+  charisma: 'Charisma'
+} as const;
+
+export type CoreAttribute = keyof typeof CORE_ATTRIBUTES;
