@@ -1,44 +1,53 @@
-import type { Character as CharacterType } from '../types';
+import { useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
+import { Text } from '@react-three/drei';
+import * as THREE from 'three';
 
 interface CharacterProps {
-  character: CharacterType;
-  animate?: boolean;
+  position?: [number, number, number];
+  level?: number;
+  name?: string;
 }
 
-export default function Character({ character, animate = true }: CharacterProps) {
+export default function Character({ position = [0, 0, 0], level = 1, name = 'Hero' }: CharacterProps) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const textRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state, delta) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y += delta * 0.5;
+    }
+  });
+
   return (
-    <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-md">
-      {/* Character Avatar */}
-      <div 
-        className={`w-24 h-24 rounded-full mb-4 flex items-center justify-center text-white text-2xl font-bold ${animate ? 'animate-bounce' : ''}`}
-        style={{ backgroundColor: character.appearance.color }}
+    <group position={position}>
+      {/* Character body */}
+      <mesh ref={meshRef}>
+        <boxGeometry args={[1, 2, 1]} />
+        <meshStandardMaterial color="#4a90e2" />
+      </mesh>
+
+      {/* Level display */}
+      <Text
+        position={[0, 2.5, 0]}
+        fontSize={0.5}
+        color="#ffffff"
+        anchorX="center"
+        anchorY="middle"
       >
-        {character.name[0].toUpperCase()}
-      </div>
+        {`Level ${level}`}
+      </Text>
 
-      {/* Level indicator */}
-      <div className="text-lg font-semibold mb-2">
-        Level {character.level}
-      </div>
-
-      {/* Character Name */}
-      <div className="text-xl font-bold mb-2">
-        {character.name}
-      </div>
-
-      {/* Accessories */}
-      {character.appearance.accessories.length > 0 && (
-        <div className="flex gap-2 mt-2">
-          {character.appearance.accessories.map((accessory, index) => (
-            <div 
-              key={index}
-              className="px-2 py-1 bg-gray-100 rounded-md text-sm"
-            >
-              {accessory}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+      {/* Character name */}
+      <Text
+        position={[0, -1.5, 0]}
+        fontSize={0.4}
+        color="#ffffff"
+        anchorX="center"
+        anchorY="middle"
+      >
+        {name}
+      </Text>
+    </group>
   );
 }
