@@ -1,115 +1,77 @@
--- Previous schema content remains the same
-
--- Create feedback table
-create type feedback_status as enum ('new', 'in_progress', 'resolved');
-create type feedback_category as enum ('bug', 'feature', 'improvement', 'general');
-
-create table if not exists feedback (
-    id uuid primary key default uuid_generate_v4(),
-    user_id uuid references auth.users not null,
-    category feedback_category not null,
-    message text not null,
-    status feedback_status not null default 'new',
-    response text,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    resolved_at timestamp with time zone,
-    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+-- Create habits table
+CREATE TABLE habits (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    frequency TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
 );
 
--- Add trigger for updating timestamps
-create trigger update_feedback_updated_at
-    before update on feedback
-    for each row
-    execute function update_updated_at_column();
+-- Create habit_logs table to track habit completion
+CREATE TABLE habit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    habit_id UUID REFERENCES habits(id) ON DELETE CASCADE,
+    completed_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+);
 
--- Add RLS policies for feedback
-alter table feedback enable row level security;
+-- Create goals table
+CREATE TABLE goals (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    target_date DATE,
+    status TEXT DEFAULT 'in_progress',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW())
+);
 
--- Users can view their own feedback
-create policy "Users can view their own feedback"
-    on feedback for select
-    using (auth.uid() = user_id);
+-- Enable Row Level Security (RLS)
+ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE habit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
 
--- Users can create feedback
-create policy "Users can create feedback"
-    on feedback for insert
-    with check (auth.uid() = user_id);
+-- Create policies
+CREATE POLICY "Users can view their own habits" ON habits
+    FOR SELECT USING (auth.uid() = user_id);
 
--- Admins can view all feedback
-create policy "Admins can view all feedback"
-    on feedback for select
-    using (is_admin(auth.uid()));
+CREATE POLICY "Users can insert their own habits" ON habits
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- Admins can update feedback
-create policy "Admins can update feedback"
-    on feedback for update
-    using (is_admin(auth.uid()));
+CREATE POLICY "Users can update their own habits" ON habits
+    FOR UPDATE USING (auth.uid() = user_id);
 
--- Function to get unread feedback count for admins
-create or replace function get_unread_feedback_count()
-returns bigint as $$
-begin
-    return (
-        select count(*)
-        from feedback
-        where status = 'new'
-    );
-end;
-$$ language plpgsql security definer;
+CREATE POLICY "Users can delete their own habits" ON habits
+    FOR DELETE USING (auth.uid() = user_id);
 
--- Function to get feedback summary
-create or replace function get_feedback_summary()
-returns table (
-    total_feedback bigint,
-    new_feedback bigint,
-    in_progress_feedback bigint,
-    resolved_feedback bigint,
-    avg_resolution_time interval
-) as $$
-begin
-    return query
-    select
-        count(*) as total_feedback,
-        count(*) filter (where status = 'new') as new_feedback,
-        count(*) filter (where status = 'in_progress') as in_progress_feedback,
-        count(*) filter (where status = 'resolved') as resolved_feedback,
-        avg(resolved_at - created_at) filter (where status = 'resolved') as avg_resolution_time
-    from feedback;
-end;
-$$ language plpgsql security definer;
-
--- Function to notify admins of new feedback
-create or replace function notify_admins_of_feedback()
-returns trigger as $$
-begin
-    insert into admin_logs (admin_id, action, details)
-    select
-        ur.user_id,
-        'new_feedback',
-        jsonb_build_object(
-            'feedback_id', NEW.id,
-            'category', NEW.category,
-            'created_at', NEW.created_at
+CREATE POLICY "Users can view their own habit logs" ON habit_logs
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM habits
+            WHERE habits.id = habit_logs.habit_id
+            AND habits.user_id = auth.uid()
         )
-    from user_roles ur
-    where ur.role = 'admin';
-    
-    return NEW;
-end;
-$$ language plpgsql security definer;
+    );
 
--- Add trigger for admin notification
-create trigger notify_admins_new_feedback
-    after insert on feedback
-    for each row
-    execute function notify_admins_of_feedback();
+CREATE POLICY "Users can insert their own habit logs" ON habit_logs
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM habits
+            WHERE habits.id = habit_logs.habit_id
+            AND habits.user_id = auth.uid()
+        )
+    );
 
--- Add feedback-related columns to admin_settings
-insert into admin_settings (key, value, updated_by)
-select 
-    'feedback_notifications',
-    '{"email": true, "dashboard": true}'::jsonb,
-    (select user_id from user_roles where role = 'admin' limit 1)
-where not exists (
-    select 1 from admin_settings where key = 'feedback_notifications'
-);
+CREATE POLICY "Users can view their own goals" ON goals
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own goals" ON goals
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own goals" ON goals
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own goals" ON goals
+    FOR DELETE USING (auth.uid() = user_id);

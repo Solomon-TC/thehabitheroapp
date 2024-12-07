@@ -1,44 +1,32 @@
-export interface Character {
+export interface Habit {
   id: string;
-  name: string;
-  level: number;
-  experience: number;
-  appearance: {
-    color: string;
-    accessories: string[];
-  };
-  stats: {
-    strength: number;
-    agility: number;
-    wisdom: number;
-    charisma: number;
-  };
-  achievements: {
-    id: string;
-    name: string;
-    description: string;
-    dateUnlocked: string;
-  }[];
-  habits: {
-    id: string;
-    name: string;
-    streak: number;
-    lastCompleted: string | null;
-  }[];
-  goals: {
-    id: string;
-    name: string;
-    progress: number;
-    target: number;
-    deadline: string | null;
-  }[];
+  user_id: string;
+  title: string;
+  description?: string;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  created_at: string;
+  updated_at: string;
 }
 
-export type CoreAttributeType = 'strength' | 'agility' | 'wisdom' | 'charisma';
+export interface HabitLog {
+  id: string;
+  habit_id: string;
+  completed_at: string;
+}
 
-export const CORE_ATTRIBUTES: CoreAttributeType[] = [
-  'strength',
-  'agility',
-  'wisdom',
-  'charisma'
-];
+export interface Goal {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  target_date?: string;
+  status: 'in_progress' | 'completed' | 'abandoned';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface User {
+  id: string;
+  email?: string;
+  created_at: string;
+}

@@ -1,41 +1,45 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import Toast from '../components/Toast';
-
-interface Notification {
-  id: number;
-  message: string;
-  type: 'success' | 'error' | 'info';
-}
 
 interface NotificationContextType {
   showNotification: (message: string, type: 'success' | 'error' | 'info') => void;
+  notifications: Array<{ id: number; message: string; type: string }>;
+  clearNotification: (id: number) => void;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+const NotificationContext = createContext<NotificationContextType | null>(null);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<Array<{ id: number; message: string; type: string }>>([]);
 
   const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info') => {
     const id = Date.now();
-    setNotifications((prev) => [...prev, { id, message, type }]);
+    setNotifications(prev => [...prev, { id, message, type }]);
+    setTimeout(() => clearNotification(id), 5000);
   }, []);
 
-  const removeNotification = useCallback((id: number) => {
-    setNotifications((prev) => prev.filter((notification) => notification.id !== id));
+  const clearNotification = useCallback((id: number) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id));
   }, []);
+
+  // Provide a default value during server-side rendering
+  if (typeof window === 'undefined') {
+    return <>{children}</>;
+  }
 
   return (
-    <NotificationContext.Provider value={{ showNotification }}>
+    <NotificationContext.Provider value={{ showNotification, notifications, clearNotification }}>
       {children}
-      <div className="fixed bottom-4 right-4 space-y-4 z-50">
-        {notifications.map((notification) => (
-          <Toast
-            key={notification.id}
-            message={notification.message}
-            type={notification.type}
-            onClose={() => removeNotification(notification.id)}
-          />
+      <div className="fixed bottom-4 right-4 space-y-2">
+        {notifications.map(({ id, message, type }) => (
+          <div
+            key={id}
+            className={`p-4 rounded-lg shadow-lg ${
+              type === 'success' ? 'bg-green-500' :
+              type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+            } text-white`}
+          >
+            {message}
+          </div>
         ))}
       </div>
     </NotificationContext.Provider>
@@ -44,51 +48,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
 export function useNotification() {
   const context = useContext(NotificationContext);
-  if (context === undefined) {
-    throw new Error('useNotification must be used within a NotificationProvider');
+  
+  // Provide a no-op implementation during server-side rendering
+  if (!context) {
+    return {
+      showNotification: () => {},
+      notifications: [],
+      clearNotification: () => {},
+    };
   }
+  
   return context;
 }
-
-// Utility functions for common notifications
-export function useGameNotifications() {
-  const { showNotification } = useNotification();
-
-  const notifyLevelUp = useCallback((level: number) => {
-    showNotification(`Level Up! You've reached level ${level}! 🎉`, 'success');
-  }, [showNotification]);
-
-  const notifyAttributeIncrease = useCallback((attribute: string, value: number) => {
-    showNotification(`${attribute} increased to ${value}! 💪`, 'success');
-  }, [showNotification]);
-
-  const notifyAchievement = useCallback((achievement: string) => {
-    showNotification(`Achievement Unlocked: ${achievement} 🏆`, 'success');
-  }, [showNotification]);
-
-  const notifyStreak = useCallback((days: number) => {
-    showNotification(`${days} Day Streak! Keep it up! 🔥`, 'success');
-  }, [showNotification]);
-
-  const notifyGoalComplete = useCallback((goalTitle: string) => {
-    showNotification(`Goal Complete: ${goalTitle} ✨`, 'success');
-  }, [showNotification]);
-
-  const notifyError = useCallback((message: string) => {
-    showNotification(message, 'error');
-  }, [showNotification]);
-
-  return {
-    notifyLevelUp,
-    notifyAttributeIncrease,
-    notifyAchievement,
-    notifyStreak,
-    notifyGoalComplete,
-    notifyError
-  };
-}
-
-// Example usage:
-// const { notifyLevelUp, notifyAchievement } = useGameNotifications();
-// notifyLevelUp(5);
-// notifyAchievement('First Step');
