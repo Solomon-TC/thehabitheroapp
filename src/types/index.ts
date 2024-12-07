@@ -1,42 +1,23 @@
-export interface Habit {
+export interface User {
   id: string;
-  user_id: string;
-  title: string;
-  description?: string;
-  frequency: 'daily' | 'weekly' | 'monthly';
-  created_at: string;
-  updated_at: string;
+  email: string;
 }
 
-export interface HabitLog {
-  id: string;
-  habit_id: string;
-  completed_at: string;
+export interface Habit {
+  id: number;
+  user_id: string;
+  title: string;
+  description: string;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  created_at: string;
 }
 
 export interface Goal {
-  id: string;
+  id: number;
   user_id: string;
   title: string;
-  description?: string;
-  target_date?: string;
-  status: 'in_progress' | 'completed' | 'abandoned';
-  created_at: string;
-  updated_at: string;
-}
-
-export interface User {
-  id: string;
-  email?: string;
+  description: string;
+  target_date: string;
+  completed: boolean;
   created_at: string;
 }
-
-export const CORE_ATTRIBUTES = {
-  strength: 'Strength',
-  intelligence: 'Intelligence',
-  willpower: 'Willpower',
-  discipline: 'Discipline',
-  charisma: 'Charisma'
-} as const;
-
-export type CoreAttribute = keyof typeof CORE_ATTRIBUTES;
