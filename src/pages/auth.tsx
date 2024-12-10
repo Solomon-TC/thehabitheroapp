@@ -10,15 +10,28 @@ export default function Auth() {
   const supabase = createClientComponentClient();
 
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN') {
-        router.push('/dashboard');
+    // Check for access token in the URL
+    const handleInitialRedirect = async () => {
+      if (router.query.error) {
+        setMessage(router.query.error_description as string || 'Error during authentication');
+        return;
       }
-    });
 
-    return () => {
-      authListener.subscription.unsubscribe();
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (session) {
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error('Auth error:', error);
+        setMessage(error instanceof Error ? error.message : 'Authentication error');
+      } finally {
+        setLoading(false);
+      }
     };
+
+    handleInitialRedirect();
   }, [router, supabase.auth]);
 
   const handleSignUp = async (email: string, password: string) => {
@@ -72,6 +85,17 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="text-xl mb-4">Loading...</div>
+        <div className="text-sm text-gray-500">
+          {message && <div className="mt-2">{message}</div>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
