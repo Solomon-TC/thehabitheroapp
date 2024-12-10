@@ -19,9 +19,14 @@ export default async function handler(
 
   try {
     const rawBody = await buffer(req);
-    await handleStripeWebhook(req);
+    const signature = req.headers['stripe-signature'];
 
-    return res.status(200).json({ received: true });
+    if (!signature) {
+      throw new Error('No stripe signature found');
+    }
+
+    const result = await handleStripeWebhook(req);
+    return res.status(200).json(result);
   } catch (error) {
     console.error('Error handling webhook:', error);
     return res.status(400).json({
