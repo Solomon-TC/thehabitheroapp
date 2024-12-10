@@ -2,44 +2,29 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  try {
-    const response = NextResponse.next();
-    const supabase = createMiddlewareClient({ req: request, res: response });
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-    // If there's no session and the user is trying to access a protected route
-    if (!session && !request.nextUrl.pathname.startsWith('/auth')) {
-      const redirectUrl = new URL('/auth', request.url);
-      return NextResponse.redirect(redirectUrl);
-    }
-
-    // If there's a session and the user is on the auth page
-    if (session && request.nextUrl.pathname.startsWith('/auth')) {
-      const redirectUrl = new URL('/dashboard', request.url);
-      return NextResponse.redirect(redirectUrl);
-    }
-
-    return response;
-  } catch (e) {
-    // If there's an error, redirect to auth page
-    const redirectUrl = new URL('/auth', request.url);
+  // If user is not signed in and the current path is not /auth,
+  // redirect the user to /auth
+  if (!session && req.nextUrl.pathname !== '/auth') {
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = '/auth';
     return NextResponse.redirect(redirectUrl);
   }
-}
 
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
-  ],
-};
+  // If user is signed in and the current path is /auth,
+  // redirect the user to /dashboard
+  if (session && req.nextUrl.pathname === '/auth') {
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = '/dashboard';
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  return res;
+}

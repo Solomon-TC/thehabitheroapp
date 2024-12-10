@@ -1,58 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../lib/supabase';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import AuthForm from '../components/AuthForm';
 
 export default function Auth() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
-    // Check if we're returning from email confirmation
-    const handleEmailConfirmation = async () => {
-      const hash = window.location.hash;
-      const error = router.query.error;
-      const errorDescription = router.query.error_description;
-      
-      if (hash || error) {
-        setLoading(true);
-        try {
-          if (hash && hash.includes('access_token')) {
-            // Get session from URL fragment
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (error) throw error;
-            if (session) {
-              router.push('/dashboard');
-              return;
-            }
-          } else if (error) {
-            setMessage(errorDescription as string || 'Error confirming email');
-          }
-        } catch (error) {
-          console.error('Error handling confirmation:', error);
-          setMessage(error instanceof Error ? error.message : 'Error confirming email');
-        } finally {
-          setLoading(false);
-        }
-      } else {
-        setLoading(false);
-      }
-    };
-
-    handleEmailConfirmation();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN') {
         router.push('/dashboard');
       }
     });
 
     return () => {
-      subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
-  }, [router]);
+  }, [router, supabase.auth]);
 
   const handleSignUp = async (email: string, password: string) => {
     try {
@@ -73,6 +40,7 @@ export default function Auth() {
         setMessage('This email is already registered. Please sign in instead.');
       } else {
         setMessage('Please check your email for the confirmation link.');
+        console.log('Signup successful:', data);
       }
     } catch (error) {
       console.error('Error signing up:', error);
@@ -104,14 +72,6 @@ export default function Auth() {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
