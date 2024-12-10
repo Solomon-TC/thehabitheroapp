@@ -1,124 +1,90 @@
 import { useState } from 'react';
-import { useRouter } from 'next/router';
-import { supabase } from '../lib/supabase';
-import { AuthError } from '@supabase/supabase-js';
 
-export default function AuthForm() {
-  const router = useRouter();
+interface AuthFormProps {
+  onSignIn: (email: string, password: string) => Promise<void>;
+  onSignUp: (email: string, password: string) => Promise<void>;
+  loading: boolean;
+}
+
+export default function AuthForm({ onSignIn, onSignUp, loading }: AuthFormProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        if (error) throw error;
-        // Show success message for sign up
-        alert('Check your email for the confirmation link!');
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        router.push('/dashboard');
-      }
-    } catch (err) {
-      const error = err as AuthError;
-      setError(error.message);
-    } finally {
-      setLoading(false);
+    if (isSignUp) {
+      await onSignUp(email, password);
+    } else {
+      await onSignIn(email, password);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold">{isSignUp ? 'Create Account' : 'Sign In'}</h2>
-        <p className="text-gray-600 mt-2">
-          {isSignUp
-            ? 'Already have an account?'
-            : "Don't have an account?"}{' '}
-          <button
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-blue-600 hover:text-blue-800"
-          >
-            {isSignUp ? 'Sign In' : 'Sign Up'}
-          </button>
-        </p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+      <div className="rounded-md shadow-sm -space-y-px">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-            Email
+          <label htmlFor="email-address" className="sr-only">
+            Email address
           </label>
           <input
-            id="email"
+            id="email-address"
+            name="email"
             type="email"
+            autoComplete="email"
             required
+            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+            placeholder="Email address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            disabled={loading}
           />
         </div>
-
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="sr-only">
             Password
           </label>
           <input
             id="password"
+            name="password"
             type="password"
+            autoComplete={isSignUp ? 'new-password' : 'current-password'}
             required
+            className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            disabled={loading}
           />
         </div>
+      </div>
 
+      <div>
         <button
           type="submit"
           disabled={loading}
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           {loading ? (
-            <div className="flex items-center">
-              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-              Loading...
-            </div>
+            'Loading...'
           ) : isSignUp ? (
-            'Sign Up'
+            'Sign up'
           ) : (
-            'Sign In'
+            'Sign in'
           )}
         </button>
-      </form>
-    </div>
+      </div>
+
+      <div className="text-sm text-center">
+        <button
+          type="button"
+          className="font-medium text-indigo-600 hover:text-indigo-500"
+          onClick={() => setIsSignUp(!isSignUp)}
+          disabled={loading}
+        >
+          {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+        </button>
+      </div>
+    </form>
   );
 }

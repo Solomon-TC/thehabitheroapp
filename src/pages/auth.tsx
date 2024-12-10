@@ -1,53 +1,71 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
-import { AuthError } from '@supabase/supabase-js';
+import AuthForm from '../components/AuthForm';
 
 export default function Auth() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
+  useEffect(() => {
+    // Handle email confirmation
+    const handleEmailConfirmation = async () => {
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        try {
+          setLoading(true);
+          const { data, error } = await supabase.auth.getSession();
+          if (error) throw error;
+          if (data?.session) {
+            router.push('/dashboard');
+          }
+        } catch (error) {
+          console.error('Error confirming email:', error);
+          setMessage('Error confirming email. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    handleEmailConfirmation();
+  }, [router]);
+
+  const handleSignUp = async (email: string, password: string) => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth`
+        }
       });
-
       if (error) throw error;
-      setMessage('Check your email for the confirmation link.');
+      setMessage('Check your email for the confirmation link!');
     } catch (error) {
-      if (error instanceof AuthError) {
-        setMessage(error.message);
-      } else {
-        setMessage('An unexpected error occurred');
-      }
+      console.error('Error signing up:', error);
+      setMessage(error instanceof Error ? error.message : 'Error signing up');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
+  const handleSignIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      setLoading(true);
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
-
       if (error) throw error;
-    } catch (error) {
-      if (error instanceof AuthError) {
-        setMessage(error.message);
-      } else {
-        setMessage('An unexpected error occurred');
+      if (data.session) {
+        router.push('/dashboard');
       }
+    } catch (error) {
+      console.error('Error signing in:', error);
+      setMessage(error instanceof Error ? error.message : 'Error signing in');
     } finally {
       setLoading(false);
     }
@@ -58,68 +76,19 @@ export default function Auth() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
+            Welcome to Habit Tracker
           </h2>
-        </div>
-        <form className="mt-8 space-y-6">
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email-address" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
-
           {message && (
-            <div className="text-sm text-center text-red-600">
+            <div className="mt-2 text-center text-sm text-gray-600">
               {message}
             </div>
           )}
-
-          <div className="flex space-x-4">
-            <button
-              type="button"
-              onClick={handleSignIn}
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              onClick={handleSignUp}
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              Sign up
-            </button>
-          </div>
-        </form>
+        </div>
+        <AuthForm
+          onSignIn={handleSignIn}
+          onSignUp={handleSignUp}
+          loading={loading}
+        />
       </div>
     </div>
   );
