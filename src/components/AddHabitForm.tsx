@@ -1,18 +1,22 @@
 import { useState } from 'react';
 import { createHabit } from '../utils/database';
-import type { CreateHabitInput } from '../types/database';
 
 interface AddHabitFormProps {
   onHabitAdded: () => void;
   onCancel: () => void;
 }
 
+interface HabitFormData {
+  name: string;
+  frequency: string;
+  target_days: number;
+}
+
 export default function AddHabitForm({ onHabitAdded, onCancel }: AddHabitFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [formData, setFormData] = useState<CreateHabitInput>({
+  const [formData, setFormData] = useState<HabitFormData>({
     name: '',
-    description: '',
     frequency: 'daily',
     target_days: 1
   });
@@ -23,7 +27,7 @@ export default function AddHabitForm({ onHabitAdded, onCancel }: AddHabitFormPro
     setError('');
 
     try {
-      await createHabit(formData);
+      await createHabit(formData.name, formData.frequency, formData.target_days);
       onHabitAdded();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create habit');
@@ -32,11 +36,11 @@ export default function AddHabitForm({ onHabitAdded, onCancel }: AddHabitFormPro
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'target_days' ? parseInt(value) : value
+      [name]: type === 'number' ? parseInt(value) : value
     }));
   };
 
@@ -57,21 +61,6 @@ export default function AddHabitForm({ onHabitAdded, onCancel }: AddHabitFormPro
             onChange={handleChange}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             placeholder="e.g., Morning Exercise"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description || ''}
-            onChange={handleChange}
-            rows={3}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            placeholder="Describe your habit..."
           />
         </div>
 
@@ -101,7 +90,6 @@ export default function AddHabitForm({ onHabitAdded, onCancel }: AddHabitFormPro
             id="target_days"
             name="target_days"
             min="1"
-            required
             value={formData.target_days}
             onChange={handleChange}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
