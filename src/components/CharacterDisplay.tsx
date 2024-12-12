@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getCharacter } from '../utils/character';
 import { calculateRequiredXP } from '../types/character';
 import CharacterAvatar from './CharacterAvatar';
+import CharacterCustomization from './CharacterCustomization';
 import type { Character, CharacterAppearance } from '../types/character';
 
 interface CharacterWithAppearance extends Character {
@@ -12,6 +13,7 @@ export default function CharacterDisplay() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [character, setCharacter] = useState<CharacterWithAppearance | null>(null);
+  const [showCustomization, setShowCustomization] = useState(false);
 
   useEffect(() => {
     loadCharacter();
@@ -58,20 +60,55 @@ export default function CharacterDisplay() {
     </div>
   );
 
+  if (showCustomization) {
+    return (
+      <CharacterCustomization
+        characterId={character.id}
+        currentAppearance={character.character_appearance}
+        onCustomized={() => {
+          loadCharacter();
+          setShowCustomization(false);
+        }}
+        onCancel={() => setShowCustomization(false)}
+      />
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Character Avatar and Basic Info */}
         <div className="flex flex-col items-center">
-          <CharacterAvatar
-            hairStyle={character.character_appearance.hair_style}
-            hairColor={character.character_appearance.hair_color}
-            skinColor={character.character_appearance.skin_color}
-            eyeColor={character.character_appearance.eye_color}
-            outfit={character.character_appearance.outfit}
-            size="lg"
-            className="mb-4"
-          />
+          <div className="relative">
+            <CharacterAvatar
+              hairStyle={character.character_appearance.hair_style}
+              hairColor={character.character_appearance.hair_color}
+              skinColor={character.character_appearance.skin_color}
+              eyeColor={character.character_appearance.eye_color}
+              outfit={character.character_appearance.outfit}
+              size="lg"
+              className="mb-4"
+            />
+            <button
+              onClick={() => setShowCustomization(true)}
+              className="absolute top-0 right-0 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              title="Customize Character"
+            >
+              <svg
+                className="w-5 h-5 text-gray-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+            </button>
+          </div>
           <h2 className="text-2xl font-bold text-gray-900">{character.name}</h2>
           <div className="flex items-center space-x-2 mt-1">
             <span className="text-lg text-gray-600">Level {character.level}</span>
