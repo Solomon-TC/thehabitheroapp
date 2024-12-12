@@ -1,19 +1,9 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import type {
-  Habit,
-  Goal,
-  HabitLog,
-  GoalProgress,
-  CreateHabitInput,
-  CreateGoalInput,
-  UpdateHabitInput,
-  UpdateGoalInput,
-  CreateHabitLogInput,
-  CreateGoalProgressInput,
-} from '../types/database';
+import { addExperience, checkAchievements } from './character';
+import { XP_REWARDS } from '../types/character';
 
 // Habits
-export async function createHabit(habit: CreateHabitInput) {
+export async function createHabit(name: string, frequency: string, targetDays: number = 1) {
   const supabase = createClientComponentClient();
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -21,35 +11,28 @@ export async function createHabit(habit: CreateHabitInput) {
 
   const { data, error } = await supabase
     .from('habits')
-    .insert([{ ...habit, user_id: user.id }])
+    .insert([{
+      user_id: user.id,
+      name,
+      frequency,
+      target_days: targetDays
+    }])
     .select()
     .single();
 
   if (error) throw error;
-  return data;
-}
 
-export async function updateHabit(habitId: string, updates: UpdateHabitInput) {
-  const supabase = createClientComponentClient();
-  const { data, error } = await supabase
+  // Check for first habit achievement
+  const { count } = await supabase
     .from('habits')
-    .update(updates)
-    .eq('id', habitId)
-    .select()
-    .single();
+    .select('*', { count: 'exact' })
+    .eq('user_id', user.id);
 
-  if (error) throw error;
+  if (count === 1) {
+    await checkAchievements('habit', 1);
+  }
+
   return data;
-}
-
-export async function deleteHabit(habitId: string) {
-  const supabase = createClientComponentClient();
-  const { error } = await supabase
-    .from('habits')
-    .delete()
-    .eq('id', habitId);
-
-  if (error) throw error;
 }
 
 export async function getUserHabits() {
@@ -63,8 +46,50 @@ export async function getUserHabits() {
   return data;
 }
 
+export async function completeHabit(habitId: string) {
+  const supabase = createClientComponentClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) throw new Error('User not authenticated');
+
+  // Log the completion
+  const { error: logError } = await supabase
+    .from('habit_logs')
+    .insert([{
+      habit_id: habitId,
+      user_id: user.id
+    }]);
+
+  if (logError) throw logError;
+
+  // Award XP
+  await addExperience(XP_REWARDS.COMPLETE_HABIT, 'habit', habitId);
+
+  // Check for streaks
+  const { data: logs } = await supabase
+    .from('habit_logs')
+    .select('completed_at')
+    .eq('habit_id', habitId)
+    .order('completed_at', { ascending: false })
+    .limit(7);
+
+  if (logs && logs.length === 7) {
+    // Week streak achieved
+    await addExperience(XP_REWARDS.HABIT_STREAK.WEEK, 'habit', habitId);
+  }
+
+  return true;
+}
+
 // Goals
-export async function createGoal(goal: CreateGoalInput) {
+export async function createGoal(input: {
+  name: string;
+  description?: string;
+  target_value: number;
+  current_value?: number;
+  unit?: string;
+  deadline?: string;
+}) {
   const supabase = createClientComponentClient();
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -73,39 +98,27 @@ export async function createGoal(goal: CreateGoalInput) {
   const { data, error } = await supabase
     .from('goals')
     .insert([{
-      ...goal,
       user_id: user.id,
-      current_value: 0,
+      ...input,
+      current_value: input.current_value || 0,
       status: 'in_progress'
     }])
     .select()
     .single();
 
   if (error) throw error;
-  return data;
-}
 
-export async function updateGoal(goalId: string, updates: UpdateGoalInput) {
-  const supabase = createClientComponentClient();
-  const { data, error } = await supabase
+  // Check for first goal achievement
+  const { count } = await supabase
     .from('goals')
-    .update(updates)
-    .eq('id', goalId)
-    .select()
-    .single();
+    .select('*', { count: 'exact' })
+    .eq('user_id', user.id);
 
-  if (error) throw error;
+  if (count === 1) {
+    await checkAchievements('goal', 1);
+  }
+
   return data;
-}
-
-export async function deleteGoal(goalId: string) {
-  const supabase = createClientComponentClient();
-  const { error } = await supabase
-    .from('goals')
-    .delete()
-    .eq('id', goalId);
-
-  if (error) throw error;
 }
 
 export async function getUserGoals() {
@@ -119,82 +132,29 @@ export async function getUserGoals() {
   return data;
 }
 
-// Habit Logs
-export async function logHabitCompletion(habitId: string, notes?: string) {
+export async function updateGoalProgress(goalId: string, progress: number) {
   const supabase = createClientComponentClient();
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) throw new Error('User not authenticated');
 
-  const { data, error } = await supabase
-    .from('habit_logs')
-    .insert([{
-      habit_id: habitId,
-      user_id: user.id,
-      notes
-    }])
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function getHabitLogs(habitId: string, startDate?: string, endDate?: string) {
-  const supabase = createClientComponentClient();
-  let query = supabase
-    .from('habit_logs')
-    .select('*')
-    .eq('habit_id', habitId);
-
-  if (startDate) {
-    query = query.gte('completed_at', startDate);
-  }
-  if (endDate) {
-    query = query.lte('completed_at', endDate);
-  }
-
-  const { data, error } = await query.order('completed_at', { ascending: false });
-
-  if (error) throw error;
-  return data;
-}
-
-// Goal Progress
-export async function updateGoalProgress(goalId: string, value: number, notes?: string) {
-  const supabase = createClientComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) throw new Error('User not authenticated');
-
-  // Start a transaction to update both goal progress and current value
+  // Get current goal data
   const { data: goal, error: goalError } = await supabase
     .from('goals')
-    .select('current_value, target_value')
+    .select('*')
     .eq('id', goalId)
     .single();
 
   if (goalError) throw goalError;
 
-  const newValue = goal.current_value + value;
-  const status = newValue >= goal.target_value ? 'completed' : 'in_progress';
+  const newValue = goal.current_value + progress;
+  const completed = newValue >= goal.target_value;
+  const status = completed ? 'completed' : 'in_progress';
 
-  const { data: progressData, error: progressError } = await supabase
-    .from('goal_progress')
-    .insert([{
-      goal_id: goalId,
-      user_id: user.id,
-      value,
-      notes
-    }])
-    .select()
-    .single();
-
-  if (progressError) throw progressError;
-
+  // Update goal
   const { error: updateError } = await supabase
     .from('goals')
-    .update({ 
+    .update({
       current_value: newValue,
       status
     })
@@ -202,17 +162,39 @@ export async function updateGoalProgress(goalId: string, value: number, notes?: 
 
   if (updateError) throw updateError;
 
-  return progressData;
-}
-
-export async function getGoalProgress(goalId: string) {
-  const supabase = createClientComponentClient();
-  const { data, error } = await supabase
+  // Log progress
+  const { error: logError } = await supabase
     .from('goal_progress')
-    .select('*')
-    .eq('goal_id', goalId)
-    .order('recorded_at', { ascending: false });
+    .insert([{
+      goal_id: goalId,
+      user_id: user.id,
+      value: progress
+    }]);
 
-  if (error) throw error;
-  return data;
+  if (logError) throw logError;
+
+  // Award XP for progress
+  const progressXP = Math.floor((progress / goal.target_value) * XP_REWARDS.COMPLETE_GOAL);
+  await addExperience(progressXP, 'goal', goalId);
+
+  // If goal completed, award full completion XP
+  if (completed) {
+    await addExperience(XP_REWARDS.COMPLETE_GOAL, 'goal', goalId);
+    
+    // Check for milestone achievements
+    const { count } = await supabase
+      .from('goals')
+      .select('*', { count: 'exact' })
+      .eq('user_id', user.id)
+      .eq('status', 'completed');
+
+    if (count === 1) {
+      await checkAchievements('goal', 1);
+    }
+  }
+
+  return {
+    newValue,
+    completed
+  };
 }

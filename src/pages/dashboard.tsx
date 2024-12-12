@@ -5,44 +5,46 @@ import HabitList from '../components/HabitList';
 import GoalList from '../components/GoalList';
 import AddHabitForm from '../components/AddHabitForm';
 import AddGoalForm from '../components/AddGoalForm';
+import CharacterDisplay from '../components/CharacterDisplay';
+import CharacterCreation from '../components/CharacterCreation';
+import { getCharacter } from '../utils/character';
 
 type Tab = 'habits' | 'goals';
-
-const CloseIcon = () => (
-  <svg
-    className="h-6 w-6"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    aria-hidden="true"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M6 18L18 6M6 6l12 12"
-    />
-  </svg>
-);
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState('');
+  const [hasCharacter, setHasCharacter] = useState(false);
+  const [showCreateCharacter, setShowCreateCharacter] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('habits');
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const supabase = createClientComponentClient();
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserName(user.email?.split('@')[0] || 'User');
+    const initialize = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserName(user.email?.split('@')[0] || 'User');
+          
+          // Check if user has a character
+          try {
+            await getCharacter();
+            setHasCharacter(true);
+          } catch (err) {
+            setHasCharacter(false);
+            setShowCreateCharacter(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing dashboard:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    getUser();
+    initialize();
   }, [supabase.auth]);
 
   if (loading) {
@@ -64,8 +66,23 @@ export default function Dashboard() {
             Welcome back, {userName}!
           </h1>
           <p className="mt-1 text-sm text-gray-600">
-            Track your habits and achieve your goals.
+            Level up your life by tracking habits and achieving goals.
           </p>
+        </div>
+
+        {/* Character Section */}
+        <div className="px-4 sm:px-0 mb-8">
+          {hasCharacter ? (
+            <CharacterDisplay />
+          ) : showCreateCharacter ? (
+            <CharacterCreation
+              onCharacterCreated={() => {
+                setHasCharacter(true);
+                setShowCreateCharacter(false);
+              }}
+              onCancel={() => setShowCreateCharacter(false)}
+            />
+          ) : null}
         </div>
 
         {/* Tabs */}
@@ -130,7 +147,19 @@ export default function Dashboard() {
                 className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
               >
                 <span className="sr-only">Close</span>
-                <CloseIcon />
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
             </div>
             <AddHabitForm
@@ -153,7 +182,19 @@ export default function Dashboard() {
                 className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
               >
                 <span className="sr-only">Close</span>
-                <CloseIcon />
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
             </div>
             <AddGoalForm
