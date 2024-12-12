@@ -17,6 +17,83 @@ interface CharacterCustomizationProps {
   onCancel: () => void;
 }
 
+interface ColorOption {
+  value: string;
+  label: string;
+  hex: string;
+}
+
+const hairColors: ColorOption[] = [
+  { value: 'black', label: 'Black', hex: '#000000' },
+  { value: 'brown', label: 'Brown', hex: '#8B4513' },
+  { value: 'blonde', label: 'Blonde', hex: '#FFD700' },
+  { value: 'red', label: 'Red', hex: '#DC143C' },
+  { value: 'white', label: 'White', hex: '#FFFFFF' },
+  { value: 'blue', label: 'Blue', hex: '#4169E1' },
+  { value: 'purple', label: 'Purple', hex: '#800080' },
+  { value: 'green', label: 'Green', hex: '#228B22' }
+];
+
+const skinColors: ColorOption[] = [
+  { value: 'fair', label: 'Fair', hex: '#FFE4C4' },
+  { value: 'light', label: 'Light', hex: '#F5DEB3' },
+  { value: 'medium', label: 'Medium', hex: '#DEB887' },
+  { value: 'dark', label: 'Dark', hex: '#D2691E' },
+  { value: 'deep', label: 'Deep', hex: '#8B4513' }
+];
+
+const eyeColors: ColorOption[] = [
+  { value: 'brown', label: 'Brown', hex: '#8B4513' },
+  { value: 'blue', label: 'Blue', hex: '#4169E1' },
+  { value: 'green', label: 'Green', hex: '#228B22' },
+  { value: 'hazel', label: 'Hazel', hex: '#DAA520' },
+  { value: 'gray', label: 'Gray', hex: '#808080' },
+  { value: 'amber', label: 'Amber', hex: '#FFA500' },
+  { value: 'violet', label: 'Violet', hex: '#800080' }
+];
+
+const outfitInfo = [
+  { value: 'warrior', label: 'Warrior', icon: '⚔️', description: 'Strong and resilient' },
+  { value: 'mage', label: 'Mage', icon: '🔮', description: 'Wise and powerful' },
+  { value: 'rogue', label: 'Rogue', icon: '🗡️', description: 'Quick and agile' },
+  { value: 'noble', label: 'Noble', icon: '👑', description: 'Charismatic leader' },
+  { value: 'explorer', label: 'Explorer', icon: '🗺️', description: 'Adventurous spirit' }
+];
+
+const ColorPicker = ({
+  label,
+  options,
+  value,
+  onChange
+}: {
+  label: string;
+  options: ColorOption[];
+  value: string;
+  onChange: (value: string) => void;
+}) => (
+  <div className="space-y-2">
+    <label className="block text-sm font-medium text-gray-700">
+      {label}
+    </label>
+    <div className="grid grid-cols-4 gap-2">
+      {options.map(option => (
+        <button
+          key={option.value}
+          type="button"
+          className={`w-full aspect-square rounded-full border-2 transition-all ${
+            value === option.value
+              ? 'border-indigo-500 ring-2 ring-indigo-500 ring-offset-2 scale-110'
+              : 'border-gray-300 hover:border-gray-400 hover:scale-105'
+          }`}
+          style={{ backgroundColor: option.hex }}
+          onClick={() => onChange(option.value)}
+          title={option.label}
+        />
+      ))}
+    </div>
+  </div>
+);
+
 export default function CharacterCustomization({
   characterId,
   currentAppearance,
@@ -49,12 +126,12 @@ export default function CharacterCustomization({
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl mx-auto">
+    <div className="bg-white p-6 rounded-lg shadow-xl max-w-4xl mx-auto">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Customize Your Character</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Character Preview */}
-        <div className="bg-gray-50 p-4 rounded-lg flex flex-col items-center">
+        <div className="bg-gray-50 p-6 rounded-lg flex flex-col items-center">
           <CharacterAvatar
             hairStyle={appearance.hair_style}
             hairColor={appearance.hair_color}
@@ -64,110 +141,83 @@ export default function CharacterCustomization({
             size="lg"
             className="mb-4"
           />
-          <p className="text-lg font-medium text-gray-900">Preview</p>
+          <div className="text-center">
+            <p className="text-lg font-medium text-gray-900">Preview</p>
+            <p className="text-sm text-gray-500">Changes will be saved when you click "Save Changes"</p>
+          </div>
         </div>
 
         {/* Customization Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Hair Style */}
           <div>
-            <label htmlFor="hair_style" className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Hair Style
             </label>
-            <select
-              id="hair_style"
-              name="hair_style"
-              value={appearance.hair_style}
-              onChange={(e) => setAppearance(prev => ({ ...prev, hair_style: e.target.value }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            >
+            <div className="grid grid-cols-3 gap-2">
               {HAIR_STYLES.map(style => (
-                <option key={style} value={style}>
-                  {style.charAt(0).toUpperCase() + style.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="hair_color" className="block text-sm font-medium text-gray-700">
-              Hair Color
-            </label>
-            <div className="mt-1 grid grid-cols-4 gap-2">
-              {HAIR_COLORS.map(color => (
                 <button
-                  key={color}
+                  key={style}
                   type="button"
-                  className={`w-full aspect-square rounded-full border-2 ${
-                    appearance.hair_color === color
-                      ? 'border-indigo-500 ring-2 ring-indigo-500 ring-offset-2'
-                      : 'border-gray-300'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => setAppearance(prev => ({ ...prev, hair_color: color }))}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="skin_color" className="block text-sm font-medium text-gray-700">
-              Skin Tone
-            </label>
-            <div className="mt-1 grid grid-cols-4 gap-2">
-              {SKIN_COLORS.map(color => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`w-full aspect-square rounded-full border-2 ${
-                    appearance.skin_color === color
-                      ? 'border-indigo-500 ring-2 ring-indigo-500 ring-offset-2'
-                      : 'border-gray-300'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => setAppearance(prev => ({ ...prev, skin_color: color }))}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="eye_color" className="block text-sm font-medium text-gray-700">
-              Eye Color
-            </label>
-            <div className="mt-1 grid grid-cols-4 gap-2">
-              {EYE_COLORS.map(color => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`w-full aspect-square rounded-full border-2 ${
-                    appearance.eye_color === color
-                      ? 'border-indigo-500 ring-2 ring-indigo-500 ring-offset-2'
-                      : 'border-gray-300'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => setAppearance(prev => ({ ...prev, eye_color: color }))}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="outfit" className="block text-sm font-medium text-gray-700">
-              Class Outfit
-            </label>
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              {OUTFITS.map(outfitOption => (
-                <button
-                  key={outfitOption}
-                  type="button"
-                  className={`p-3 rounded-lg border-2 ${
-                    appearance.outfit === outfitOption
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    appearance.hair_style === style
                       ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
-                  onClick={() => setAppearance(prev => ({ ...prev, outfit: outfitOption }))}
+                  onClick={() => setAppearance(prev => ({ ...prev, hair_style: style }))}
                 >
-                  {outfitOption.charAt(0).toUpperCase() + outfitOption.slice(1)}
+                  {style.charAt(0).toUpperCase() + style.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Colors */}
+          <ColorPicker
+            label="Hair Color"
+            options={hairColors}
+            value={appearance.hair_color}
+            onChange={value => setAppearance(prev => ({ ...prev, hair_color: value }))}
+          />
+
+          <ColorPicker
+            label="Skin Tone"
+            options={skinColors}
+            value={appearance.skin_color}
+            onChange={value => setAppearance(prev => ({ ...prev, skin_color: value }))}
+          />
+
+          <ColorPicker
+            label="Eye Color"
+            options={eyeColors}
+            value={appearance.eye_color}
+            onChange={value => setAppearance(prev => ({ ...prev, eye_color: value }))}
+          />
+
+          {/* Class/Outfit Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Class
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {outfitInfo.map(({ value, label, icon, description }) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    appearance.outfit === value
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                  onClick={() => setAppearance(prev => ({ ...prev, outfit: value }))}
+                >
+                  <div className="flex items-center space-x-2">
+                    <span className="text-2xl">{icon}</span>
+                    <div>
+                      <div className="font-medium">{label}</div>
+                      <div className="text-sm text-gray-500">{description}</div>
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
