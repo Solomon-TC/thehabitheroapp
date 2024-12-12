@@ -18,70 +18,29 @@ export interface CharacterAppearance {
   hair_color: string;
   skin_color: string;
   eye_color: string;
-  outfit: string;
+  shirt_style: string;
+  shirt_color: string;
+  pants_style: string;
+  pants_color: string;
+  shoes_style: string;
+  shoes_color: string;
+  armor_head?: string;
+  armor_body?: string;
+  armor_legs?: string;
+  accessory_1?: string;
+  accessory_2?: string;
   created_at: string;
   updated_at: string;
 }
 
-export interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  experience_reward: number;
-  icon: string;
-  created_at: string;
-}
-
-export interface UserAchievement {
-  id: string;
-  user_id: string;
-  achievement_id: string;
-  earned_at: string;
-}
-
-export interface ExperienceLog {
-  id: string;
-  user_id: string;
-  amount: number;
-  source_type: 'habit' | 'goal' | 'achievement';
-  source_id: string;
-  earned_at: string;
-}
-
-// Form data type for character creation
-export interface CharacterCreationFormData {
-  name: string;
-  hair_style: string;
-  hair_color: string;
-  skin_color: string;
-  eye_color: string;
-  outfit: string;
-}
-
-// Helper types for creating and updating
-export type CreateCharacterInput = Pick<Character, 'name'>;
-
-export type UpdateCharacterInput = Partial<Pick<Character, 
-  'name' | 'strength' | 'agility' | 'intelligence'
->>;
-
-export type CreateCharacterAppearanceInput = Pick<CharacterAppearance,
-  'hair_style' | 'hair_color' | 'skin_color' | 'eye_color' | 'outfit'
-> & {
-  character_id: string;
-};
-
-export type UpdateCharacterAppearanceInput = Partial<Omit<CharacterAppearance,
-  'id' | 'character_id' | 'created_at' | 'updated_at'
->>;
-
-// Constants for character customization
 export const HAIR_STYLES = [
-  'short',
-  'medium',
+  'hero',
+  'noble',
   'long',
-  'curly',
-  'straight',
+  'ponytail',
+  'messy',
+  'mohawk',
+  'bob',
   'spiky'
 ] as const;
 
@@ -114,43 +73,145 @@ export const EYE_COLORS = [
   'violet'
 ] as const;
 
-export const OUTFITS = [
-  'casual',
-  'warrior',
-  'mage',
-  'rogue',
-  'noble',
-  'explorer'
+export const SHIRT_STYLES = [
+  'plain',
+  'striped',
+  'collared',
+  'vest',
+  'robe',
+  'tunic'
 ] as const;
 
-// Level system constants
-export const BASE_XP_REQUIREMENT = 100;
-export const XP_MULTIPLIER = 1.5;
+export const PANTS_STYLES = [
+  'plain',
+  'shorts',
+  'skirt',
+  'baggy',
+  'tight',
+  'armored'
+] as const;
 
-export const calculateRequiredXP = (level: number): number => {
-  return Math.floor(BASE_XP_REQUIREMENT * Math.pow(XP_MULTIPLIER, level - 1));
-};
+export const SHOES_STYLES = [
+  'boots',
+  'sandals',
+  'sneakers',
+  'armored',
+  'magical',
+  'ninja'
+] as const;
 
-export const calculateLevel = (totalXP: number): number => {
-  let level = 1;
-  let requiredXP = BASE_XP_REQUIREMENT;
-  
-  while (totalXP >= requiredXP) {
-    totalXP -= requiredXP;
-    level++;
-    requiredXP = calculateRequiredXP(level);
-  }
-  
-  return level;
-};
+export const ARMOR_HEAD = [
+  'none',
+  'leather_cap',
+  'iron_helmet',
+  'mage_hood',
+  'ninja_mask',
+  'crown'
+] as const;
 
-// XP rewards for different actions
-export const XP_REWARDS = {
-  COMPLETE_HABIT: 50,
-  COMPLETE_GOAL: 200,
-  HABIT_STREAK: {
-    WEEK: 100,
-    MONTH: 500
-  },
-  FIRST_ACHIEVEMENT: 100
-} as const;
+export const ARMOR_BODY = [
+  'none',
+  'leather_armor',
+  'iron_armor',
+  'mage_robe',
+  'ninja_garb',
+  'royal_armor'
+] as const;
+
+export const ARMOR_LEGS = [
+  'none',
+  'leather_greaves',
+  'iron_greaves',
+  'mage_pants',
+  'ninja_pants',
+  'royal_greaves'
+] as const;
+
+export const ACCESSORIES = [
+  'none',
+  'necklace',
+  'ring',
+  'belt',
+  'cape',
+  'wings',
+  'shield',
+  'book'
+] as const;
+
+// Color palettes for clothing
+export const CLOTHING_COLORS = [
+  // Primary colors
+  'red',
+  'blue',
+  'yellow',
+  // Secondary colors
+  'green',
+  'purple',
+  'orange',
+  // Neutral colors
+  'white',
+  'black',
+  'gray',
+  'brown',
+  // Special colors
+  'gold',
+  'silver',
+  'bronze'
+] as const;
+
+export interface CharacterCreationFormData {
+  name: string;
+  hair_style: string;
+  hair_color: string;
+  skin_color: string;
+  eye_color: string;
+  shirt_style: string;
+  shirt_color: string;
+  pants_style: string;
+  pants_color: string;
+  shoes_style: string;
+  shoes_color: string;
+  armor_head?: string;
+  armor_body?: string;
+  armor_legs?: string;
+  accessory_1?: string;
+  accessory_2?: string;
+}
+
+// Helper function to calculate required XP for next level
+export function calculateRequiredXP(level: number): number {
+  return Math.floor(100 * Math.pow(1.5, level - 1));
+}
+
+// Helper function to get color hex values
+export function getColorHex(color: string): string {
+  const colors: Record<string, string> = {
+    // Hair colors
+    black: '#1a1a1a',
+    brown: '#8b4513',
+    blonde: '#ffd700',
+    red: '#dc143c',
+    white: '#ffffff',
+    blue: '#4169e1',
+    purple: '#800080',
+    green: '#228b22',
+    // Skin colors
+    fair: '#ffe4c4',
+    light: '#f5deb3',
+    medium: '#deb887',
+    dark: '#d2691e',
+    deep: '#8b4513',
+    // Eye colors
+    hazel: '#daa520',
+    gray: '#808080',
+    amber: '#ffa500',
+    violet: '#800080',
+    // Clothing colors
+    yellow: '#ffd700',
+    orange: '#ffa500',
+    gold: '#ffd700',
+    silver: '#c0c0c0',
+    bronze: '#cd7f32'
+  };
+  return colors[color] || '#000000';
+}

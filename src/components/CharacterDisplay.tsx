@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { getCharacter } from '../utils/character';
 import { calculateRequiredXP } from '../types/character';
 import CharacterAvatar from './CharacterAvatar';
-import CharacterCustomization from './CharacterCustomization';
 import type { Character, CharacterAppearance } from '../types/character';
 
 interface CharacterWithAppearance extends Character {
@@ -60,20 +59,6 @@ export default function CharacterDisplay() {
     </div>
   );
 
-  if (showCustomization) {
-    return (
-      <CharacterCustomization
-        characterId={character.id}
-        currentAppearance={character.character_appearance}
-        onCustomized={() => {
-          loadCharacter();
-          setShowCustomization(false);
-        }}
-        onCancel={() => setShowCustomization(false)}
-      />
-    );
-  }
-
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -85,7 +70,17 @@ export default function CharacterDisplay() {
               hairColor={character.character_appearance.hair_color}
               skinColor={character.character_appearance.skin_color}
               eyeColor={character.character_appearance.eye_color}
-              outfit={character.character_appearance.outfit}
+              shirtStyle={character.character_appearance.shirt_style}
+              shirtColor={character.character_appearance.shirt_color}
+              pantsStyle={character.character_appearance.pants_style}
+              pantsColor={character.character_appearance.pants_color}
+              shoesStyle={character.character_appearance.shoes_style}
+              shoesColor={character.character_appearance.shoes_color}
+              armorHead={character.character_appearance.armor_head}
+              armorBody={character.character_appearance.armor_body}
+              armorLegs={character.character_appearance.armor_legs}
+              accessory1={character.character_appearance.accessory_1}
+              accessory2={character.character_appearance.accessory_2}
               size="lg"
               className="mb-4"
             />
@@ -113,7 +108,9 @@ export default function CharacterDisplay() {
           <div className="flex items-center space-x-2 mt-1">
             <span className="text-lg text-gray-600">Level {character.level}</span>
             <span className="text-sm text-gray-400">•</span>
-            <span className="text-lg text-gray-600 capitalize">{character.character_appearance.outfit}</span>
+            <span className="text-lg text-gray-600 capitalize">
+              {character.character_appearance.shirt_style}
+            </span>
           </div>
         </div>
 
@@ -149,7 +146,9 @@ export default function CharacterDisplay() {
           <div className="bg-gray-50 rounded-lg p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Class</span>
-              <span className="text-gray-900 capitalize">{character.character_appearance.outfit}</span>
+              <span className="text-gray-900 capitalize">
+                {character.character_appearance.shirt_style}
+              </span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Created</span>
