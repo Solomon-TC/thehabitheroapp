@@ -1,19 +1,28 @@
 import { useState } from 'react';
 import { createGoal } from '../utils/database';
-import type { CreateGoalInput } from '../types/database';
 
 interface AddGoalFormProps {
   onGoalAdded: () => void;
   onCancel: () => void;
 }
 
+interface GoalFormData {
+  name: string;
+  description: string;
+  target_value: number;
+  current_value: number;
+  unit: string;
+  deadline: string;
+}
+
 export default function AddGoalForm({ onGoalAdded, onCancel }: AddGoalFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [formData, setFormData] = useState<CreateGoalInput>({
+  const [formData, setFormData] = useState<GoalFormData>({
     name: '',
     description: '',
     target_value: 0,
+    current_value: 0,
     unit: '',
     deadline: ''
   });
@@ -24,7 +33,14 @@ export default function AddGoalForm({ onGoalAdded, onCancel }: AddGoalFormProps)
     setError('');
 
     try {
-      await createGoal(formData);
+      await createGoal(
+        formData.name,
+        formData.description || null,
+        formData.target_value,
+        formData.current_value,
+        formData.unit || null,
+        formData.deadline || null
+      );
       onGoalAdded();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create goal');
@@ -34,16 +50,17 @@ export default function AddGoalForm({ onGoalAdded, onCancel }: AddGoalFormProps)
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'number' ? parseFloat(value) : value
+      [name]: value
     }));
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
-      <h2 className="text-lg font-semibold mb-4">Add New Goal</h2>
+    <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl mx-auto">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Goal</h2>
+      
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -56,8 +73,8 @@ export default function AddGoalForm({ onGoalAdded, onCancel }: AddGoalFormProps)
             required
             value={formData.name}
             onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            placeholder="e.g., Run a Marathon"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            placeholder="Enter goal name"
           />
         </div>
 
@@ -68,11 +85,11 @@ export default function AddGoalForm({ onGoalAdded, onCancel }: AddGoalFormProps)
           <textarea
             id="description"
             name="description"
-            value={formData.description || ''}
+            value={formData.description}
             onChange={handleChange}
             rows={3}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            placeholder="Describe your goal..."
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            placeholder="Describe your goal"
           />
         </div>
 
@@ -87,42 +104,58 @@ export default function AddGoalForm({ onGoalAdded, onCancel }: AddGoalFormProps)
               name="target_value"
               required
               min="0"
-              step="any"
               value={formData.target_value}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
           </div>
 
           <div>
+            <label htmlFor="current_value" className="block text-sm font-medium text-gray-700">
+              Starting Value
+            </label>
+            <input
+              type="number"
+              id="current_value"
+              name="current_value"
+              required
+              min="0"
+              value={formData.current_value}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
             <label htmlFor="unit" className="block text-sm font-medium text-gray-700">
-              Unit
+              Unit (optional)
             </label>
             <input
               type="text"
               id="unit"
               name="unit"
-              value={formData.unit || ''}
+              value={formData.unit}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              placeholder="e.g., miles, pounds"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              placeholder="e.g., pages, miles, hours"
             />
           </div>
-        </div>
 
-        <div>
-          <label htmlFor="deadline" className="block text-sm font-medium text-gray-700">
-            Deadline
-          </label>
-          <input
-            type="date"
-            id="deadline"
-            name="deadline"
-            value={formData.deadline}
-            onChange={handleChange}
-            min={new Date().toISOString().split('T')[0]}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-          />
+          <div>
+            <label htmlFor="deadline" className="block text-sm font-medium text-gray-700">
+              Deadline (optional)
+            </label>
+            <input
+              type="date"
+              id="deadline"
+              name="deadline"
+              value={formData.deadline}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+          </div>
         </div>
 
         {error && (
@@ -131,7 +164,7 @@ export default function AddGoalForm({ onGoalAdded, onCancel }: AddGoalFormProps)
           </div>
         )}
 
-        <div className="flex justify-end space-x-3">
+        <div className="flex justify-end space-x-3 pt-4">
           <button
             type="button"
             onClick={onCancel}
@@ -142,9 +175,9 @@ export default function AddGoalForm({ onGoalAdded, onCancel }: AddGoalFormProps)
           <button
             type="submit"
             disabled={loading}
-            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
           >
-            {loading ? 'Adding...' : 'Add Goal'}
+            {loading ? 'Creating...' : 'Create Goal'}
           </button>
         </div>
       </form>
