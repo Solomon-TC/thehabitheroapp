@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getCharacter } from '../utils/character';
 import { calculateRequiredXP } from '../types/character';
 import CharacterAvatar from './CharacterAvatar';
+import CharacterCustomization from './CharacterCustomization';
 import type { Character, CharacterAppearance } from '../types/character';
 
 interface CharacterWithAppearance extends Character {
@@ -49,6 +50,20 @@ export default function CharacterDisplay() {
     return null;
   }
 
+  if (showCustomization) {
+    return (
+      <CharacterCustomization
+        characterId={character.id}
+        currentAppearance={character.character_appearance}
+        onCustomized={() => {
+          loadCharacter();
+          setShowCustomization(false);
+        }}
+        onCancel={() => setShowCustomization(false)}
+      />
+    );
+  }
+
   const requiredXP = calculateRequiredXP(character.level);
   const xpProgress = (character.experience / requiredXP) * 100;
 
@@ -86,7 +101,7 @@ export default function CharacterDisplay() {
             />
             <button
               onClick={() => setShowCustomization(true)}
-              className="absolute top-0 right-0 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="absolute top-0 right-0 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
               title="Customize Character"
             >
               <svg
