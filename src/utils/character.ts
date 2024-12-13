@@ -5,222 +5,157 @@ import {
   XP_REWARDS,
   type Character,
   type CharacterAppearance,
-  type Achievement,
-  type UserAchievement,
-  type ExperienceLog,
-  type UpdateCharacterInput,
-  type UpdateCharacterAppearanceInput,
   type CharacterCreationFormData
 } from '../types/character';
 
-// Character Management
-export async function createCharacter(formData: CharacterCreationFormData) {
-  const supabase = createClientComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) throw new Error('User not authenticated');
+const supabase = createClientComponentClient();
 
-  // Start a transaction by using a single connection
+export async function createCharacter(data: CharacterCreationFormData): Promise<Character> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  // Create character
   const { data: character, error: characterError } = await supabase
     .from('characters')
-    .insert([{
+    .insert({
       user_id: user.id,
-      name: formData.name,
+      name: data.name,
       level: 1,
       experience: 0,
       strength: 1,
       agility: 1,
       intelligence: 1
-    }])
+    })
     .select()
     .single();
 
   if (characterError) throw characterError;
 
+  // Create character appearance
   const { error: appearanceError } = await supabase
     .from('character_appearance')
-    .insert([{
+    .insert({
       character_id: character.id,
-      hair_style: formData.hair_style,
-      hair_color: formData.hair_color,
-      skin_color: formData.skin_color,
-      eye_color: formData.eye_color,
-      outfit: formData.outfit
-    }]);
+      hair_style: data.hair_style,
+      hair_color: data.hair_color,
+      skin_color: data.skin_color,
+      eye_color: data.eye_color,
+      shirt_style: data.shirt_style,
+      shirt_color: data.shirt_color,
+      pants_style: data.pants_style,
+      pants_color: data.pants_color,
+      shoes_style: data.shoes_style,
+      shoes_color: data.shoes_color
+    });
 
   if (appearanceError) throw appearanceError;
 
   return character;
 }
 
-export async function getCharacter() {
-  const supabase = createClientComponentClient();
+export async function getCharacter(): Promise<Character & { character_appearance: CharacterAppearance }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
   const { data: character, error: characterError } = await supabase
     .from('characters')
     .select(`
       *,
       character_appearance (*)
     `)
+    .eq('user_id', user.id)
     .single();
 
   if (characterError) throw characterError;
+  if (!character) throw new Error('Character not found');
+
   return character;
-}
-
-export async function updateCharacter(characterId: string, updates: UpdateCharacterInput) {
-  const supabase = createClientComponentClient();
-  const { data, error } = await supabase
-    .from('characters')
-    .update(updates)
-    .eq('id', characterId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
 }
 
 export async function updateCharacterAppearance(
   characterId: string,
-  updates: UpdateCharacterAppearanceInput
-) {
-  const supabase = createClientComponentClient();
-  const { data, error } = await supabase
+  appearance: Partial<CharacterAppearance>
+): Promise<void> {
+  const { error } = await supabase
     .from('character_appearance')
-    .update(updates)
-    .eq('character_id', characterId)
-    .select()
-    .single();
+    .update({
+      hair_style: appearance.hair_style,
+      hair_color: appearance.hair_color,
+      skin_color: appearance.skin_color,
+      eye_color: appearance.eye_color,
+      shirt_style: appearance.shirt_style,
+      shirt_color: appearance.shirt_color,
+      pants_style: appearance.pants_style,
+      pants_color: appearance.pants_color,
+      shoes_style: appearance.shoes_style,
+      shoes_color: appearance.shoes_color,
+      armor_head: appearance.armor_head,
+      armor_body: appearance.armor_body,
+      armor_legs: appearance.armor_legs,
+      accessory_1: appearance.accessory_1,
+      accessory_2: appearance.accessory_2
+    })
+    .eq('character_id', characterId);
 
   if (error) throw error;
-  return data;
 }
 
-// Experience and Leveling
-export async function addExperience(amount: number, sourceType: 'habit' | 'goal' | 'achievement', sourceId: string) {
-  const supabase = createClientComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) throw new Error('User not authenticated');
-
-  // Log the experience gain
-  const { error: logError } = await supabase
-    .from('experience_logs')
-    .insert([{
-      user_id: user.id,
-      amount,
-      source_type: sourceType,
-      source_id: sourceId
-    }]);
-
-  if (logError) throw logError;
-
-  // Update character experience and level
-  const { data: character, error: characterError } = await supabase
+export async function addExperience(characterId: string, amount: number): Promise<void> {
+  // Get current character stats
+  const { data: character, error: getError } = await supabase
     .from('characters')
     .select('experience, level')
+    .eq('id', characterId)
     .single();
 
-  if (characterError) throw characterError;
+  if (getError) throw getError;
 
-  const newExperience = character.experience + amount;
-  const newLevel = calculateLevel(newExperience);
+  const totalXP = character.experience + amount;
+  const newLevel = calculateLevel(totalXP);
   const leveledUp = newLevel > character.level;
 
+  // Update character
   const { error: updateError } = await supabase
     .from('characters')
     .update({
-      experience: newExperience,
-      level: newLevel
+      experience: totalXP,
+      level: newLevel,
+      // Increase stats on level up
+      ...(leveledUp ? {
+        strength: character.strength + 1,
+        agility: character.agility + 1,
+        intelligence: character.intelligence + 1
+      } : {})
     })
-    .eq('user_id', user.id);
+    .eq('id', characterId);
 
   if (updateError) throw updateError;
 
-  return {
-    newExperience,
-    newLevel,
-    leveledUp
-  };
+  // Log experience gain
+  const { error: logError } = await supabase
+    .from('experience_logs')
+    .insert({
+      character_id: characterId,
+      amount,
+      source_type: 'action',
+      leveled_up: leveledUp
+    });
+
+  if (logError) throw logError;
 }
 
-// Achievements
-export async function getAchievements() {
-  const supabase = createClientComponentClient();
-  const { data, error } = await supabase
-    .from('achievements')
-    .select('*');
-
-  if (error) throw error;
-  return data;
+export async function completeHabit(characterId: string): Promise<void> {
+  await addExperience(characterId, XP_REWARDS.COMPLETE_HABIT);
 }
 
-export async function getUserAchievements() {
-  const supabase = createClientComponentClient();
-  const { data, error } = await supabase
-    .from('user_achievements')
-    .select(`
-      *,
-      achievements (*)
-    `);
-
-  if (error) throw error;
-  return data;
+export async function completeGoal(characterId: string): Promise<void> {
+  await addExperience(characterId, XP_REWARDS.COMPLETE_GOAL);
 }
 
-export async function awardAchievement(achievementId: string) {
-  const supabase = createClientComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) throw new Error('User not authenticated');
-
-  // Check if achievement already earned
-  const { data: existing } = await supabase
-    .from('user_achievements')
-    .select()
-    .eq('user_id', user.id)
-    .eq('achievement_id', achievementId)
-    .single();
-
-  if (existing) return null; // Achievement already earned
-
-  // Get achievement details
-  const { data: achievement } = await supabase
-    .from('achievements')
-    .select()
-    .eq('id', achievementId)
-    .single();
-
-  if (!achievement) throw new Error('Achievement not found');
-
-  // Award achievement
-  const { error: awardError } = await supabase
-    .from('user_achievements')
-    .insert([{
-      user_id: user.id,
-      achievement_id: achievementId
-    }]);
-
-  if (awardError) throw awardError;
-
-  // Award experience points
-  await addExperience(
-    achievement.experience_reward,
-    'achievement',
-    achievementId
-  );
-
-  return achievement;
+export async function maintainStreak(characterId: string): Promise<void> {
+  await addExperience(characterId, XP_REWARDS.MAINTAIN_STREAK);
 }
 
-// Helper function to check and award achievements based on actions
-export async function checkAchievements(action: 'habit' | 'goal', count: number) {
-  // Example achievement checks
-  if (action === 'habit' && count === 1) {
-    await awardAchievement('first-habit-achievement-id');
-  }
-  if (action === 'goal' && count === 1) {
-    await awardAchievement('first-goal-achievement-id');
-  }
-  // Add more achievement checks as needed
+export async function unlockAchievement(characterId: string): Promise<void> {
+  await addExperience(characterId, XP_REWARDS.UNLOCK_ACHIEVEMENT);
 }

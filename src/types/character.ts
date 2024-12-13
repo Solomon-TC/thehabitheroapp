@@ -101,7 +101,6 @@ export const SHOES_STYLES = [
 ] as const;
 
 export const ARMOR_HEAD = [
-  'none',
   'leather_cap',
   'iron_helmet',
   'mage_hood',
@@ -110,7 +109,6 @@ export const ARMOR_HEAD = [
 ] as const;
 
 export const ARMOR_BODY = [
-  'none',
   'leather_armor',
   'iron_armor',
   'mage_robe',
@@ -119,7 +117,6 @@ export const ARMOR_BODY = [
 ] as const;
 
 export const ARMOR_LEGS = [
-  'none',
   'leather_greaves',
   'iron_greaves',
   'mage_pants',
@@ -128,7 +125,6 @@ export const ARMOR_LEGS = [
 ] as const;
 
 export const ACCESSORIES = [
-  'none',
   'necklace',
   'ring',
   'belt',
@@ -178,9 +174,36 @@ export interface CharacterCreationFormData {
   accessory_2?: string;
 }
 
+// XP and leveling constants
+export const BASE_XP = 100;
+export const XP_MULTIPLIER = 1.5;
+export const MAX_LEVEL = 100;
+
+// XP rewards for different actions
+export const XP_REWARDS = {
+  COMPLETE_HABIT: 50,
+  COMPLETE_GOAL: 200,
+  MAINTAIN_STREAK: 25,
+  UNLOCK_ACHIEVEMENT: 100
+} as const;
+
 // Helper function to calculate required XP for next level
 export function calculateRequiredXP(level: number): number {
-  return Math.floor(100 * Math.pow(1.5, level - 1));
+  return Math.floor(BASE_XP * Math.pow(XP_MULTIPLIER, level - 1));
+}
+
+// Helper function to calculate level from total XP
+export function calculateLevel(totalXP: number): number {
+  let level = 1;
+  let requiredXP = calculateRequiredXP(level);
+  
+  while (totalXP >= requiredXP && level < MAX_LEVEL) {
+    totalXP -= requiredXP;
+    level++;
+    requiredXP = calculateRequiredXP(level);
+  }
+  
+  return level;
 }
 
 // Helper function to get color hex values
