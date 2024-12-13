@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { getColorHex } from '../types/character';
 
-interface CharacterAvatarProps {
+export interface CharacterAvatarProps {
   hairStyle: string;
   hairColor: string;
   skinColor: string;
@@ -53,6 +53,14 @@ const drawPixel = (
 ) => {
   ctx.fillStyle = `${color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
   ctx.fillRect(x * size, y * size, size, size);
+};
+
+const addShading = (color: string, amount: number): string => {
+  const hex = color.replace('#', '');
+  const r = Math.max(0, parseInt(hex.slice(0, 2), 16) - amount);
+  const g = Math.max(0, parseInt(hex.slice(2, 4), 16) - amount);
+  const b = Math.max(0, parseInt(hex.slice(4, 6), 16) - amount);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 };
 
 const drawCharacter = (
@@ -111,140 +119,38 @@ const drawBody = (
   skinColor: string,
   pixelSize: number
 ) => {
-  // Terraria-style body proportions
+  // Terraria-style body proportions (shorter and wider)
   const bodyCore: PixelData[] = [
-    // Neck
-    [11, 11, 1], [12, 11, 1],
+    // Neck (shorter)
+    [11, 10, 1], [12, 10, 1],
     // Torso (wider at shoulders, narrower at waist)
-    ...[...Array(6)].flatMap((_, y): PixelData[] => 
-      [...Array(8)].map((_, x): PixelData => [x + 8, y + 12, 1])
+    ...[...Array(5)].flatMap((_, y): PixelData[] => 
+      [...Array(8)].map((_, x): PixelData => [x + 8, y + 11, 1])
     ),
-    // Arms
-    ...[...Array(6)].map((_, y): PixelData => [7, y + 12, 1]),
-    ...[...Array(6)].map((_, y): PixelData => [16, y + 12, 1]),
+    // Arms (shorter)
+    ...[...Array(5)].map((_, y): PixelData => [7, y + 11, 1]),
+    ...[...Array(5)].map((_, y): PixelData => [16, y + 11, 1]),
     // Hands
-    [6, 17, 1], [7, 17, 1],
-    [16, 17, 1], [17, 17, 1]
+    [6, 15, 1], [7, 15, 1],
+    [16, 15, 1], [17, 15, 1]
+  ];
+
+  // Add shading
+  const shadedColor = addShading(skinColor, 30);
+  const bodyShading: PixelData[] = [
+    // Right side shading
+    ...[...Array(5)].map((_, y): PixelData => [15, y + 11, 1]),
+    // Bottom shading
+    ...[...Array(6)].map((_, x): PixelData => [x + 8, 15, 1])
   ];
 
   bodyCore.forEach(([x, y, alpha = 1]) => {
     drawPixel(ctx, x, y, skinColor, alpha, pixelSize);
   });
-};
 
-const drawClothing = (
-  ctx: CanvasRenderingContext2D,
-  props: CharacterAvatarProps,
-  colors: { shirt: string; pants: string; shoes: string },
-  pixelSize: number
-) => {
-  // Draw shirt based on style
-  const shirtPixels = getShirtPixels(props.shirtStyle);
-  shirtPixels.forEach(([x, y, alpha = 1]) => {
-    drawPixel(ctx, x, y, colors.shirt, alpha, pixelSize);
+  bodyShading.forEach(([x, y, alpha = 1]) => {
+    drawPixel(ctx, x, y, shadedColor, alpha, pixelSize);
   });
-
-  // Draw pants based on style
-  const pantsPixels = getPantsPixels(props.pantsStyle);
-  pantsPixels.forEach(([x, y, alpha = 1]) => {
-    drawPixel(ctx, x, y, colors.pants, alpha, pixelSize);
-  });
-
-  // Draw shoes based on style
-  const shoesPixels = getShoesPixels(props.shoesStyle);
-  shoesPixels.forEach(([x, y, alpha = 1]) => {
-    drawPixel(ctx, x, y, colors.shoes, alpha, pixelSize);
-  });
-};
-
-const getShirtPixels = (style: string): PixelData[] => {
-  // Base shirt pixels (Terraria-style)
-  const baseShirt: PixelData[] = [
-    // Torso
-    ...[...Array(5)].flatMap((_, y): PixelData[] => 
-      [...Array(6)].map((_, x): PixelData => [x + 9, y + 12, 1])
-    ),
-    // Sleeves
-    ...[...Array(4)].map((_, y): PixelData => [8, y + 12, 1]),
-    ...[...Array(4)].map((_, y): PixelData => [15, y + 12, 1])
-  ];
-
-  // Add style-specific details
-  switch (style) {
-    case 'collared':
-      return [
-        ...baseShirt,
-        // Collar
-        [9, 11, 0.9], [10, 11, 0.9], [13, 11, 0.9], [14, 11, 0.9]
-      ];
-    case 'vest':
-      return [
-        ...baseShirt,
-        // Vest details
-        [10, 13, 0.9], [11, 13, 0.9], [12, 13, 0.9], [13, 13, 0.9]
-      ];
-    default:
-      return baseShirt;
-  }
-};
-
-const getPantsPixels = (style: string): PixelData[] => {
-  const basePants: PixelData[] = [
-    // Upper legs
-    ...[...Array(3)].flatMap((_, y): PixelData[] => [
-      [10, y + 17, 1],
-      [11, y + 17, 1],
-      [12, y + 17, 1],
-      [13, y + 17, 1]
-    ])
-  ];
-
-  switch (style) {
-    case 'shorts':
-      return basePants;
-    case 'skirt':
-      return [
-        ...basePants,
-        // Skirt flare
-        [9, 17, 1], [14, 17, 1],
-        [8, 18, 1], [15, 18, 1]
-      ];
-    default:
-      return [
-        ...basePants,
-        // Lower legs
-        ...[...Array(3)].flatMap((_, y): PixelData[] => [
-          [10, y + 20, 1],
-          [11, y + 20, 1],
-          [12, y + 20, 1],
-          [13, y + 20, 1]
-        ])
-      ];
-  }
-};
-
-const getShoesPixels = (style: string): PixelData[] => {
-  const baseShoes: PixelData[] = [
-    [10, 23, 1], [11, 23, 1], [12, 23, 1], [13, 23, 1],
-    [10, 24, 1], [11, 24, 1], [12, 24, 1], [13, 24, 1]
-  ];
-
-  switch (style) {
-    case 'boots':
-      return [
-        ...baseShoes,
-        [9, 23, 1], [14, 23, 1],
-        [9, 24, 1], [14, 24, 1]
-      ];
-    case 'armored':
-      return [
-        ...baseShoes,
-        [9, 23, 0.9], [14, 23, 0.9],
-        [9, 24, 0.9], [14, 24, 0.9]
-      ];
-    default:
-      return baseShoes;
-  }
 };
 
 const drawHead = (
@@ -253,40 +159,57 @@ const drawHead = (
   eyeColor: string,
   pixelSize: number
 ) => {
-  // Head shape (more oval)
-  const headPixels: PixelData[] = [
-    // Base head shape
+  // Head shape (Terraria style - shorter and wider)
+  const headBase: PixelData[] = [
+    // Base head shape (10x8)
     ...[...Array(8)].flatMap((_, y): PixelData[] => 
-      [...Array(8)].map((_, x): PixelData => [x + 8, y + 3, 1])
-    ),
-    // Neck
-    [11, 11, 1], [12, 11, 1]
+      [...Array(10)].map((_, x): PixelData => [x + 7, y + 2, 1])
+    )
   ];
 
-  headPixels.forEach(([x, y, alpha = 1]) => {
+  // Add shading
+  const shadedColor = addShading(skinColor, 30);
+  const headShading: PixelData[] = [
+    // Right side shading
+    ...[...Array(8)].map((_, y): PixelData => [15, y + 2, 1]),
+    // Bottom shading
+    ...[...Array(8)].map((_, x): PixelData => [x + 7, 9, 1])
+  ];
+
+  // Draw base and shading
+  headBase.forEach(([x, y, alpha = 1]) => {
     drawPixel(ctx, x, y, skinColor, alpha, pixelSize);
   });
 
-  // Eyes
+  headShading.forEach(([x, y, alpha = 1]) => {
+    drawPixel(ctx, x, y, shadedColor, alpha, pixelSize);
+  });
+
+  // Eyes (Terraria style - larger and more expressive)
+  const eyeBase = getColorHex('white');
+  drawPixel(ctx, 9, 5, eyeBase, 1, pixelSize);
+  drawPixel(ctx, 10, 5, eyeBase, 1, pixelSize);
+  drawPixel(ctx, 13, 5, eyeBase, 1, pixelSize);
+  drawPixel(ctx, 14, 5, eyeBase, 1, pixelSize);
+
+  drawPixel(ctx, 9, 6, eyeColor, 1, pixelSize);
   drawPixel(ctx, 10, 6, eyeColor, 1, pixelSize);
-  drawPixel(ctx, 11, 6, eyeColor, 1, pixelSize);
   drawPixel(ctx, 13, 6, eyeColor, 1, pixelSize);
   drawPixel(ctx, 14, 6, eyeColor, 1, pixelSize);
 
   // Eyebrows
-  drawPixel(ctx, 10, 5, '#000000', 0.7, pixelSize);
-  drawPixel(ctx, 11, 5, '#000000', 0.7, pixelSize);
-  drawPixel(ctx, 13, 5, '#000000', 0.7, pixelSize);
-  drawPixel(ctx, 14, 5, '#000000', 0.7, pixelSize);
+  const browColor = addShading(skinColor, 50);
+  drawPixel(ctx, 9, 4, browColor, 0.8, pixelSize);
+  drawPixel(ctx, 10, 4, browColor, 0.8, pixelSize);
+  drawPixel(ctx, 13, 4, browColor, 0.8, pixelSize);
+  drawPixel(ctx, 14, 4, browColor, 0.8, pixelSize);
 
-  // Nose
-  drawPixel(ctx, 12, 7, skinColor, 0.8, pixelSize);
-  drawPixel(ctx, 12, 8, skinColor, 0.8, pixelSize);
-
-  // Mouth
-  drawPixel(ctx, 11, 9, '#FF9999', 0.7, pixelSize);
-  drawPixel(ctx, 12, 9, '#FF9999', 0.7, pixelSize);
-  drawPixel(ctx, 13, 9, '#FF9999', 0.7, pixelSize);
+  // Mouth (Terraria style - simple smile)
+  const mouthColor = addShading(skinColor, 40);
+  drawPixel(ctx, 11, 8, mouthColor, 0.8, pixelSize);
+  drawPixel(ctx, 12, 8, mouthColor, 0.8, pixelSize);
+  drawPixel(ctx, 13, 8, mouthColor, 0.8, pixelSize);
+  drawPixel(ctx, 12, 7, mouthColor, 0.6, pixelSize);
 };
 
 const drawHair = (
@@ -296,53 +219,160 @@ const drawHair = (
   pixelSize: number
 ) => {
   const hairPixels = getHairPixels(style);
-  hairPixels.forEach(([x, y, alpha = 1]) => {
+  const shadedColor = addShading(color, 30);
+
+  // Base hair
+  hairPixels.base.forEach(([x, y, alpha = 1]) => {
     drawPixel(ctx, x, y, color, alpha, pixelSize);
+  });
+
+  // Shaded parts
+  hairPixels.shading.forEach(([x, y, alpha = 1]) => {
+    drawPixel(ctx, x, y, shadedColor, alpha, pixelSize);
   });
 };
 
-const getHairPixels = (style: string): PixelData[] => {
+const getHairPixels = (style: string): { base: PixelData[], shading: PixelData[] } => {
   switch (style) {
     case 'hero':
-      return [
-        // Top layer
-        [8, 2, 1], [9, 2, 1], [10, 2, 1], [11, 2, 1], [12, 2, 1], [13, 2, 1], [14, 2, 1],
-        // Side layers
-        [7, 3, 1], [8, 3, 1], [14, 3, 1], [15, 3, 1],
-        [7, 4, 1], [15, 4, 1],
-        // Back spikes
-        [8, 5, 0.9], [10, 5, 0.9], [12, 5, 0.9], [14, 5, 0.9]
-      ];
+      return {
+        base: [
+          // Top spikes
+          [7, 1, 1], [9, 0, 1], [11, 1, 1], [13, 0, 1], [15, 1, 1],
+          // Main hair
+          [7, 2, 1], [8, 2, 1], [9, 2, 1], [10, 2, 1], [11, 2, 1], [12, 2, 1], [13, 2, 1], [14, 2, 1]
+        ],
+        shading: [
+          // Side spikes shading
+          [15, 2, 1], [16, 2, 1],
+          [15, 3, 1], [16, 3, 1],
+          [15, 4, 0.8], [16, 4, 0.8]
+        ]
+      };
     case 'ponytail':
-      return [
-        // Top layer
-        [8, 2, 1], [9, 2, 1], [10, 2, 1], [11, 2, 1], [12, 2, 1], [13, 2, 1], [14, 2, 1],
-        // Ponytail
-        [14, 3, 1], [15, 3, 1],
-        [15, 4, 1], [16, 4, 1],
-        [16, 5, 1], [17, 5, 1],
-        [17, 6, 1], [18, 6, 1],
-        [18, 7, 1], [19, 7, 1]
-      ];
-    case 'messy':
-      return [
-        // Top spikes
-        [7, 2, 1], [9, 1, 1], [11, 2, 1], [13, 1, 1], [15, 2, 1],
-        // Side layers
-        [6, 3, 1], [7, 3, 1], [15, 3, 1], [16, 3, 1],
-        [6, 4, 1], [16, 4, 1],
-        // Random spikes
-        [8, 5, 0.8], [11, 5, 0.8], [14, 5, 0.8]
-      ];
+      return {
+        base: [
+          // Top layer
+          [7, 2, 1], [8, 2, 1], [9, 2, 1], [10, 2, 1], [11, 2, 1], [12, 2, 1], [13, 2, 1],
+          // Ponytail
+          [14, 3, 1], [15, 3, 1],
+          [15, 4, 1], [16, 4, 1],
+          [16, 5, 1], [17, 5, 1]
+        ],
+        shading: [
+          // Ponytail shading
+          [16, 3, 0.8], [17, 3, 0.8],
+          [17, 4, 0.8], [18, 4, 0.8],
+          [18, 5, 0.8], [19, 5, 0.8]
+        ]
+      };
     default: // short
-      return [
-        // Top layer
-        [8, 2, 1], [9, 2, 1], [10, 2, 1], [11, 2, 1], [12, 2, 1], [13, 2, 1], [14, 2, 1],
-        // Side layers
-        [7, 3, 1], [8, 3, 1], [14, 3, 1], [15, 3, 1],
-        [7, 4, 1], [15, 4, 1]
-      ];
+      return {
+        base: [
+          // Top layer
+          [7, 2, 1], [8, 2, 1], [9, 2, 1], [10, 2, 1], [11, 2, 1], [12, 2, 1], [13, 2, 1],
+          // Side layers
+          [6, 3, 1], [7, 3, 1], [8, 3, 1]
+        ],
+        shading: [
+          // Side shading
+          [14, 2, 0.8], [15, 2, 0.8],
+          [14, 3, 0.8], [15, 3, 0.8]
+        ]
+      };
   }
+};
+
+const drawClothing = (
+  ctx: CanvasRenderingContext2D,
+  props: CharacterAvatarProps,
+  colors: { shirt: string; pants: string; shoes: string },
+  pixelSize: number
+) => {
+  const shadedShirt = addShading(colors.shirt, 30);
+  const shadedPants = addShading(colors.pants, 30);
+  const shadedShoes = addShading(colors.shoes, 30);
+
+  // Draw base clothing
+  const shirtPixels = getShirtPixels(props.shirtStyle);
+  shirtPixels.base.forEach(([x, y, alpha = 1]) => {
+    drawPixel(ctx, x, y, colors.shirt, alpha, pixelSize);
+  });
+  shirtPixels.shading.forEach(([x, y, alpha = 1]) => {
+    drawPixel(ctx, x, y, shadedShirt, alpha, pixelSize);
+  });
+
+  const pantsPixels = getPantsPixels(props.pantsStyle);
+  pantsPixels.base.forEach(([x, y, alpha = 1]) => {
+    drawPixel(ctx, x, y, colors.pants, alpha, pixelSize);
+  });
+  pantsPixels.shading.forEach(([x, y, alpha = 1]) => {
+    drawPixel(ctx, x, y, shadedPants, alpha, pixelSize);
+  });
+
+  const shoesPixels = getShoesPixels(props.shoesStyle);
+  shoesPixels.base.forEach(([x, y, alpha = 1]) => {
+    drawPixel(ctx, x, y, colors.shoes, alpha, pixelSize);
+  });
+  shoesPixels.shading.forEach(([x, y, alpha = 1]) => {
+    drawPixel(ctx, x, y, shadedShoes, alpha, pixelSize);
+  });
+};
+
+const getShirtPixels = (style: string): { base: PixelData[], shading: PixelData[] } => {
+  const baseShirt: PixelData[] = [
+    // Torso
+    ...[...Array(5)].flatMap((_, y): PixelData[] => 
+      [...Array(6)].map((_, x): PixelData => [x + 9, y + 11, 1])
+    ),
+    // Sleeves
+    ...[...Array(4)].map((_, y): PixelData => [8, y + 11, 1]),
+    ...[...Array(4)].map((_, y): PixelData => [15, y + 11, 1])
+  ];
+
+  const shading: PixelData[] = [
+    // Right side shading
+    ...[...Array(5)].map((_, y): PixelData => [14, y + 11, 0.8]),
+    // Bottom shading
+    ...[...Array(6)].map((_, x): PixelData => [x + 9, 15, 0.8])
+  ];
+
+  return { base: baseShirt, shading };
+};
+
+const getPantsPixels = (style: string): { base: PixelData[], shading: PixelData[] } => {
+  const basePants: PixelData[] = [
+    // Upper legs
+    ...[...Array(3)].flatMap((_, y): PixelData[] => [
+      [9, y + 16, 1],
+      [10, y + 16, 1],
+      [13, y + 16, 1],
+      [14, y + 16, 1]
+    ])
+  ];
+
+  const shading: PixelData[] = [
+    // Right leg shading
+    ...[...Array(3)].map((_, y): PixelData => [13, y + 16, 0.8]),
+    // Bottom shading
+    [9, 18, 0.8], [10, 18, 0.8], [13, 18, 0.8], [14, 18, 0.8]
+  ];
+
+  return { base: basePants, shading };
+};
+
+const getShoesPixels = (style: string): { base: PixelData[], shading: PixelData[] } => {
+  const baseShoes: PixelData[] = [
+    [9, 19, 1], [10, 19, 1], [13, 19, 1], [14, 19, 1],
+    [9, 20, 1], [10, 20, 1], [13, 20, 1], [14, 20, 1]
+  ];
+
+  const shading: PixelData[] = [
+    [13, 19, 0.8], [14, 19, 0.8],
+    [13, 20, 0.8], [14, 20, 0.8]
+  ];
+
+  return { base: baseShoes, shading };
 };
 
 const drawArmor = (
@@ -351,35 +381,80 @@ const drawArmor = (
   pixelSize: number
 ) => {
   if (props.armorHead) {
-    const helmetPixels: PixelData[] = [
+    const helmetBase: PixelData[] = [
       ...[...Array(4)].flatMap((_, y): PixelData[] => 
         [...Array(10)].map((_, x): PixelData => [x + 7, y + 2, 0.9])
       )
     ];
-    helmetPixels.forEach(([x, y, alpha = 1]) => {
-      drawPixel(ctx, x, y, '#A0A0A0', alpha, pixelSize);
+
+    const helmetShading: PixelData[] = [
+      ...[...Array(4)].map((_, y): PixelData => [15, y + 2, 0.8]),
+      ...[...Array(8)].map((_, x): PixelData => [x + 7, 5, 0.8])
+    ];
+
+    const baseColor = '#B8B8B8';
+    const shadedColor = addShading(baseColor, 30);
+
+    helmetBase.forEach(([x, y, alpha = 1]) => {
+      drawPixel(ctx, x, y, baseColor, alpha, pixelSize);
+    });
+    helmetShading.forEach(([x, y, alpha = 1]) => {
+      drawPixel(ctx, x, y, shadedColor, alpha, pixelSize);
     });
   }
 
   if (props.armorBody) {
-    const bodyArmorPixels: PixelData[] = [
-      ...[...Array(6)].flatMap((_, y): PixelData[] => 
-        [...Array(10)].map((_, x): PixelData => [x + 7, y + 12, 0.9])
+    const bodyArmorBase: PixelData[] = [
+      ...[...Array(5)].flatMap((_, y): PixelData[] => 
+        [...Array(8)].map((_, x): PixelData => [x + 8, y + 11, 0.9])
       )
     ];
-    bodyArmorPixels.forEach(([x, y, alpha = 1]) => {
-      drawPixel(ctx, x, y, '#B8B8B8', alpha, pixelSize);
+
+    const bodyArmorShading: PixelData[] = [
+      ...[...Array(5)].map((_, y): PixelData => [14, y + 11, 0.8]),
+      ...[...Array(6)].map((_, x): PixelData => [x + 8, 15, 0.8])
+    ];
+
+    const baseColor = '#A0A0A0';
+    const shadedColor = addShading(baseColor, 30);
+
+    bodyArmorBase.forEach(([x, y, alpha = 1]) => {
+      drawPixel(ctx, x, y, baseColor, alpha, pixelSize);
     });
+    bodyArmorShading.forEach(([x, y, alpha = 1]) => {
+      drawPixel(ctx, x, y, shadedColor, alpha, pixelSize);
+    });
+
+    // Add armor details
+    const detailColor = '#C0C0C0';
+    drawPixel(ctx, 9, 12, detailColor, 0.9, pixelSize);
+    drawPixel(ctx, 13, 12, detailColor, 0.9, pixelSize);
+    drawPixel(ctx, 11, 13, detailColor, 0.9, pixelSize);
   }
 
   if (props.armorLegs) {
-    const legArmorPixels: PixelData[] = [
-      ...[...Array(7)].flatMap((_, y): PixelData[] => 
-        [...Array(6)].map((_, x): PixelData => [x + 9, y + 18, 0.9])
-      )
+    const legArmorBase: PixelData[] = [
+      ...[...Array(4)].flatMap((_, y): PixelData[] => [
+        [9, y + 16, 0.9],
+        [10, y + 16, 0.9],
+        [13, y + 16, 0.9],
+        [14, y + 16, 0.9]
+      ])
     ];
-    legArmorPixels.forEach(([x, y, alpha = 1]) => {
-      drawPixel(ctx, x, y, '#A8A8A8', alpha, pixelSize);
+
+    const legArmorShading: PixelData[] = [
+      ...[...Array(4)].map((_, y): PixelData => [13, y + 16, 0.8]),
+      [9, 19, 0.8], [10, 19, 0.8], [13, 19, 0.8], [14, 19, 0.8]
+    ];
+
+    const baseColor = '#989898';
+    const shadedColor = addShading(baseColor, 30);
+
+    legArmorBase.forEach(([x, y, alpha = 1]) => {
+      drawPixel(ctx, x, y, baseColor, alpha, pixelSize);
+    });
+    legArmorShading.forEach(([x, y, alpha = 1]) => {
+      drawPixel(ctx, x, y, shadedColor, alpha, pixelSize);
     });
   }
 };
@@ -390,25 +465,53 @@ const drawAccessories = (
   pixelSize: number
 ) => {
   if (props.accessory1 === 'cape') {
-    const capePixels: PixelData[] = [
+    const capeBase: PixelData[] = [
       ...[...Array(8)].flatMap((_, y): PixelData[] => 
-        [...Array(3)].map((_, x): PixelData => [x + 16, y + 12, 0.8])
+        [...Array(3)].map((_, x): PixelData => [x + 15, y + 11, 0.8])
       )
     ];
-    capePixels.forEach(([x, y, alpha = 1]) => {
-      drawPixel(ctx, x, y, '#FF0000', alpha, pixelSize);
+
+    const capeShading: PixelData[] = [
+      ...[...Array(8)].map((_, y): PixelData => [17, y + 11, 0.7]),
+      ...[...Array(3)].map((_, x): PixelData => [x + 15, 18, 0.7])
+    ];
+
+    const baseColor = '#FF0000';
+    const shadedColor = addShading(baseColor, 30);
+
+    capeBase.forEach(([x, y, alpha = 1]) => {
+      drawPixel(ctx, x, y, baseColor, alpha, pixelSize);
+    });
+    capeShading.forEach(([x, y, alpha = 1]) => {
+      drawPixel(ctx, x, y, shadedColor, alpha, pixelSize);
     });
   }
 
   if (props.accessory2 === 'shield') {
-    const shieldPixels: PixelData[] = [
+    const shieldBase: PixelData[] = [
       ...[...Array(5)].flatMap((_, y): PixelData[] => 
-        [...Array(3)].map((_, x): PixelData => [x + 5, y + 13, 0.9])
+        [...Array(3)].map((_, x): PixelData => [x + 5, y + 12, 0.9])
       )
     ];
-    shieldPixels.forEach(([x, y, alpha = 1]) => {
-      drawPixel(ctx, x, y, '#C0C0C0', alpha, pixelSize);
+
+    const shieldShading: PixelData[] = [
+      ...[...Array(5)].map((_, y): PixelData => [7, y + 12, 0.8]),
+      ...[...Array(3)].map((_, x): PixelData => [x + 5, 16, 0.8])
+    ];
+
+    const baseColor = '#C0C0C0';
+    const shadedColor = addShading(baseColor, 30);
+    const detailColor = '#FFD700';
+
+    shieldBase.forEach(([x, y, alpha = 1]) => {
+      drawPixel(ctx, x, y, baseColor, alpha, pixelSize);
     });
+    shieldShading.forEach(([x, y, alpha = 1]) => {
+      drawPixel(ctx, x, y, shadedColor, alpha, pixelSize);
+    });
+
+    // Shield emblem
+    drawPixel(ctx, 6, 14, detailColor, 0.9, pixelSize);
   }
 };
 
