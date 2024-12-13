@@ -14,6 +14,7 @@ import {
   ARMOR_LEGS,
   ACCESSORIES,
   CLOTHING_COLORS,
+  getColorHex,
   type CharacterAppearance
 } from '../types/character';
 
@@ -265,21 +266,21 @@ export default function CharacterCustomization({
               
               <StylePicker
                 label="Head Armor"
-                options={ARMOR_HEAD}
+                options={['none', ...ARMOR_HEAD]}
                 value={appearance.armor_head || 'none'}
                 onChange={value => setAppearance(prev => ({ ...prev, armor_head: value === 'none' ? undefined : value }))}
               />
 
               <StylePicker
                 label="Body Armor"
-                options={ARMOR_BODY}
+                options={['none', ...ARMOR_BODY]}
                 value={appearance.armor_body || 'none'}
                 onChange={value => setAppearance(prev => ({ ...prev, armor_body: value === 'none' ? undefined : value }))}
               />
 
               <StylePicker
                 label="Leg Armor"
-                options={ARMOR_LEGS}
+                options={['none', ...ARMOR_LEGS]}
                 value={appearance.armor_legs || 'none'}
                 onChange={value => setAppearance(prev => ({ ...prev, armor_legs: value === 'none' ? undefined : value }))}
               />
@@ -291,14 +292,14 @@ export default function CharacterCustomization({
               
               <StylePicker
                 label="Accessory 1"
-                options={ACCESSORIES}
+                options={['none', ...ACCESSORIES]}
                 value={appearance.accessory_1 || 'none'}
                 onChange={value => setAppearance(prev => ({ ...prev, accessory_1: value === 'none' ? undefined : value }))}
               />
 
               <StylePicker
                 label="Accessory 2"
-                options={ACCESSORIES}
+                options={['none', ...ACCESSORIES]}
                 value={appearance.accessory_2 || 'none'}
                 onChange={value => setAppearance(prev => ({ ...prev, accessory_2: value === 'none' ? undefined : value }))}
               />
