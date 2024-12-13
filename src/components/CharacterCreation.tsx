@@ -6,7 +6,10 @@ import {
   HAIR_COLORS,
   SKIN_COLORS,
   EYE_COLORS,
-  OUTFITS,
+  SHIRT_STYLES,
+  PANTS_STYLES,
+  SHOES_STYLES,
+  CLOTHING_COLORS,
   type CharacterCreationFormData
 } from '../types/character';
 
@@ -24,7 +27,12 @@ export default function CharacterCreation({ onCharacterCreated, onCancel }: Char
     hair_color: HAIR_COLORS[0],
     skin_color: SKIN_COLORS[0],
     eye_color: EYE_COLORS[0],
-    outfit: OUTFITS[0]
+    shirt_style: SHIRT_STYLES[0],
+    shirt_color: CLOTHING_COLORS[0],
+    pants_style: PANTS_STYLES[0],
+    pants_color: CLOTHING_COLORS[0],
+    shoes_style: SHOES_STYLES[0],
+    shoes_color: CLOTHING_COLORS[0]
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,6 +58,39 @@ export default function CharacterCreation({ onCharacterCreated, onCancel }: Char
     }));
   };
 
+  const ColorPicker = ({
+    label,
+    colors,
+    value,
+    onChange
+  }: {
+    label: string;
+    colors: readonly string[];
+    value: string;
+    onChange: (value: string) => void;
+  }) => (
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700">
+        {label}
+      </label>
+      <div className="grid grid-cols-4 gap-2">
+        {colors.map(color => (
+          <button
+            key={color}
+            type="button"
+            className={`w-full aspect-square rounded-full border-2 ${
+              value === color
+                ? 'border-indigo-500 ring-2 ring-indigo-500 ring-offset-2'
+                : 'border-gray-300 hover:border-gray-400'
+            }`}
+            style={{ backgroundColor: color }}
+            onClick={() => onChange(color)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Create Your Character</h2>
@@ -62,7 +103,12 @@ export default function CharacterCreation({ onCharacterCreated, onCancel }: Char
             hairColor={formData.hair_color}
             skinColor={formData.skin_color}
             eyeColor={formData.eye_color}
-            outfit={formData.outfit}
+            shirtStyle={formData.shirt_style}
+            shirtColor={formData.shirt_color}
+            pantsStyle={formData.pants_style}
+            pantsColor={formData.pants_color}
+            shoesStyle={formData.shoes_style}
+            shoesColor={formData.shoes_color}
             size="lg"
             className="mb-4"
           />
@@ -106,90 +152,104 @@ export default function CharacterCreation({ onCharacterCreated, onCancel }: Char
             </select>
           </div>
 
-          <div>
-            <label htmlFor="hair_color" className="block text-sm font-medium text-gray-700">
-              Hair Color
-            </label>
-            <div className="mt-1 grid grid-cols-4 gap-2">
-              {HAIR_COLORS.map(color => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`w-full aspect-square rounded-full border-2 ${
-                    formData.hair_color === color
-                      ? 'border-indigo-500 ring-2 ring-indigo-500 ring-offset-2'
-                      : 'border-gray-300'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => setFormData(prev => ({ ...prev, hair_color: color }))}
-                />
-              ))}
-            </div>
-          </div>
+          <ColorPicker
+            label="Hair Color"
+            colors={HAIR_COLORS}
+            value={formData.hair_color}
+            onChange={value => setFormData(prev => ({ ...prev, hair_color: value }))}
+          />
+
+          <ColorPicker
+            label="Skin Tone"
+            colors={SKIN_COLORS}
+            value={formData.skin_color}
+            onChange={value => setFormData(prev => ({ ...prev, skin_color: value }))}
+          />
+
+          <ColorPicker
+            label="Eye Color"
+            colors={EYE_COLORS}
+            value={formData.eye_color}
+            onChange={value => setFormData(prev => ({ ...prev, eye_color: value }))}
+          />
 
           <div>
-            <label htmlFor="skin_color" className="block text-sm font-medium text-gray-700">
-              Skin Tone
+            <label htmlFor="shirt_style" className="block text-sm font-medium text-gray-700">
+              Shirt Style
             </label>
-            <div className="mt-1 grid grid-cols-4 gap-2">
-              {SKIN_COLORS.map(color => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`w-full aspect-square rounded-full border-2 ${
-                    formData.skin_color === color
-                      ? 'border-indigo-500 ring-2 ring-indigo-500 ring-offset-2'
-                      : 'border-gray-300'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => setFormData(prev => ({ ...prev, skin_color: color }))}
-                />
+            <select
+              id="shirt_style"
+              name="shirt_style"
+              value={formData.shirt_style}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              {SHIRT_STYLES.map(style => (
+                <option key={style} value={style}>
+                  {style.charAt(0).toUpperCase() + style.slice(1)}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
-          <div>
-            <label htmlFor="eye_color" className="block text-sm font-medium text-gray-700">
-              Eye Color
-            </label>
-            <div className="mt-1 grid grid-cols-4 gap-2">
-              {EYE_COLORS.map(color => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`w-full aspect-square rounded-full border-2 ${
-                    formData.eye_color === color
-                      ? 'border-indigo-500 ring-2 ring-indigo-500 ring-offset-2'
-                      : 'border-gray-300'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => setFormData(prev => ({ ...prev, eye_color: color }))}
-                />
-              ))}
-            </div>
-          </div>
+          <ColorPicker
+            label="Shirt Color"
+            colors={CLOTHING_COLORS}
+            value={formData.shirt_color}
+            onChange={value => setFormData(prev => ({ ...prev, shirt_color: value }))}
+          />
 
           <div>
-            <label htmlFor="outfit" className="block text-sm font-medium text-gray-700">
-              Starting Class
+            <label htmlFor="pants_style" className="block text-sm font-medium text-gray-700">
+              Pants Style
             </label>
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              {OUTFITS.map(outfitOption => (
-                <button
-                  key={outfitOption}
-                  type="button"
-                  className={`p-3 rounded-lg border-2 ${
-                    formData.outfit === outfitOption
-                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  onClick={() => setFormData(prev => ({ ...prev, outfit: outfitOption }))}
-                >
-                  {outfitOption.charAt(0).toUpperCase() + outfitOption.slice(1)}
-                </button>
+            <select
+              id="pants_style"
+              name="pants_style"
+              value={formData.pants_style}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              {PANTS_STYLES.map(style => (
+                <option key={style} value={style}>
+                  {style.charAt(0).toUpperCase() + style.slice(1)}
+                </option>
               ))}
-            </div>
+            </select>
           </div>
+
+          <ColorPicker
+            label="Pants Color"
+            colors={CLOTHING_COLORS}
+            value={formData.pants_color}
+            onChange={value => setFormData(prev => ({ ...prev, pants_color: value }))}
+          />
+
+          <div>
+            <label htmlFor="shoes_style" className="block text-sm font-medium text-gray-700">
+              Shoes Style
+            </label>
+            <select
+              id="shoes_style"
+              name="shoes_style"
+              value={formData.shoes_style}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              {SHOES_STYLES.map(style => (
+                <option key={style} value={style}>
+                  {style.charAt(0).toUpperCase() + style.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <ColorPicker
+            label="Shoes Color"
+            colors={CLOTHING_COLORS}
+            value={formData.shoes_color}
+            onChange={value => setFormData(prev => ({ ...prev, shoes_color: value }))}
+          />
 
           {error && (
             <div className="text-red-600 text-sm">
