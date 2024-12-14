@@ -1,16 +1,3 @@
-export interface Character {
-  id: string;
-  user_id: string;
-  name: string;
-  level: number;
-  experience: number;
-  strength: number;
-  agility: number;
-  intelligence: number;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface CharacterAppearance {
   id: string;
   character_id: string;
@@ -24,217 +11,172 @@ export interface CharacterAppearance {
   pants_color: string;
   shoes_style: string;
   shoes_color: string;
-  armor_head?: string;
-  armor_body?: string;
-  armor_legs?: string;
-  accessory_1?: string;
-  accessory_2?: string;
   created_at: string;
   updated_at: string;
 }
 
+export interface Character {
+  id: string;
+  user_id: string;
+  name: string;
+  level: number;
+  experience: number;
+  strength: number;
+  agility: number;
+  intelligence: number;
+  created_at: string;
+  updated_at: string;
+  character_appearance: CharacterAppearance;
+}
+
+export type HairStyle = typeof HAIR_STYLES[number];
+export type ShirtStyle = typeof SHIRT_STYLES[number];
+export type PantsStyle = typeof PANTS_STYLES[number];
+export type ShoesStyle = typeof SHOES_STYLES[number];
+
 export const HAIR_STYLES = [
-  'hero',
-  'noble',
-  'long',
-  'ponytail',
-  'messy',
-  'mohawk',
-  'bob',
-  'spiky'
-] as const;
-
-export const HAIR_COLORS = [
-  'black',
-  'brown',
-  'blonde',
-  'red',
-  'white',
-  'blue',
-  'purple',
-  'green'
-] as const;
-
-export const SKIN_COLORS = [
-  'fair',
-  'light',
+  'short',
   'medium',
-  'dark',
-  'deep'
-] as const;
-
-export const EYE_COLORS = [
-  'brown',
-  'blue',
-  'green',
-  'hazel',
-  'gray',
-  'amber',
-  'violet'
+  'long',
+  'curly',
+  'wavy',
+  'bald'
 ] as const;
 
 export const SHIRT_STYLES = [
-  'plain',
-  'striped',
-  'collared',
-  'vest',
-  'robe',
-  'tunic'
+  'basic',
+  'hoodie',
+  'sweater',
+  'tank',
+  'formal'
 ] as const;
 
 export const PANTS_STYLES = [
-  'plain',
+  'basic',
   'shorts',
-  'skirt',
-  'baggy',
-  'tight',
-  'armored'
+  'formal',
+  'athletic'
 ] as const;
 
 export const SHOES_STYLES = [
-  'boots',
-  'sandals',
-  'sneakers',
-  'armored',
-  'magical',
-  'ninja'
+  'basic',
+  'athletic',
+  'formal',
+  'boots'
 ] as const;
 
-export const ARMOR_HEAD = [
-  'leather_cap',
-  'iron_helmet',
-  'mage_hood',
-  'ninja_mask',
-  'crown'
-] as const;
+export type SkinColor = typeof COLOR_PALETTE.SKIN[number];
+export type HairColor = typeof COLOR_PALETTE.HAIR[number];
+export type EyeColor = typeof COLOR_PALETTE.EYES[number];
+export type ClothingColor = typeof COLOR_PALETTE.CLOTHING[number];
 
-export const ARMOR_BODY = [
-  'leather_armor',
-  'iron_armor',
-  'mage_robe',
-  'ninja_garb',
-  'royal_armor'
-] as const;
-
-export const ARMOR_LEGS = [
-  'leather_greaves',
-  'iron_greaves',
-  'mage_pants',
-  'ninja_pants',
-  'royal_greaves'
-] as const;
-
-export const ACCESSORIES = [
-  'necklace',
-  'ring',
-  'belt',
-  'cape',
-  'wings',
-  'shield',
-  'book'
-] as const;
-
-// Color palettes for clothing
-export const CLOTHING_COLORS = [
-  // Primary colors
-  'red',
-  'blue',
-  'yellow',
-  // Secondary colors
-  'green',
-  'purple',
-  'orange',
-  // Neutral colors
-  'white',
-  'black',
-  'gray',
-  'brown',
-  // Special colors
-  'gold',
-  'silver',
-  'bronze'
-] as const;
-
-export interface CharacterCreationFormData {
-  name: string;
-  hair_style: string;
-  hair_color: string;
-  skin_color: string;
-  eye_color: string;
-  shirt_style: string;
-  shirt_color: string;
-  pants_style: string;
-  pants_color: string;
-  shoes_style: string;
-  shoes_color: string;
-  armor_head?: string;
-  armor_body?: string;
-  armor_legs?: string;
-  accessory_1?: string;
-  accessory_2?: string;
-}
-
-// XP and leveling constants
-export const BASE_XP = 100;
-export const XP_MULTIPLIER = 1.5;
-export const MAX_LEVEL = 100;
-
-// XP rewards for different actions
-export const XP_REWARDS = {
-  COMPLETE_HABIT: 50,
-  COMPLETE_GOAL: 200,
-  MAINTAIN_STREAK: 25,
-  UNLOCK_ACHIEVEMENT: 100
+export const COLOR_PALETTE = {
+  SKIN: [
+    '#8D5524', // dark brown
+    '#C68642', // medium brown
+    '#E0AC69', // light brown
+    '#F1C27D', // very light brown
+    '#FFDBAC', // pale
+  ],
+  HAIR: [
+    '#090806', // black
+    '#2C222B', // dark brown
+    '#71635A', // medium brown
+    '#B7A69E', // light brown
+    '#D4B599', // blonde
+    '#F4E1C1', // light blonde
+    '#A7A7A7', // gray
+    '#E8E1E1', // white
+  ],
+  EYES: [
+    '#1B4B36', // green
+    '#428398', // blue
+    '#89581F', // brown
+    '#2C1810', // dark brown
+    '#A5A5A5', // gray
+  ],
+  CLOTHING: [
+    '#000000', // black
+    '#FFFFFF', // white
+    '#FF0000', // red
+    '#00FF00', // green
+    '#0000FF', // blue
+    '#FFFF00', // yellow
+    '#FF00FF', // magenta
+    '#00FFFF', // cyan
+    '#808080', // gray
+    '#800000', // maroon
+    '#808000', // olive
+    '#008000', // dark green
+    '#800080', // purple
+    '#008080', // teal
+    '#000080', // navy
+  ]
 } as const;
 
-// Helper function to calculate required XP for next level
+export interface AppearanceState {
+  hair_style: HairStyle;
+  hair_color: HairColor;
+  skin_color: SkinColor;
+  eye_color: EyeColor;
+  shirt_style: ShirtStyle;
+  shirt_color: ClothingColor;
+  pants_style: PantsStyle;
+  pants_color: ClothingColor;
+  shoes_style: ShoesStyle;
+  shoes_color: ClothingColor;
+  created_at: string;
+  updated_at: string;
+}
+
+export const XP_REWARDS = {
+  COMPLETE_HABIT: 10,
+  COMPLETE_GOAL: 50,
+  STREAK_BONUS: 5,
+  ACHIEVEMENT: 100
+} as const;
+
 export function calculateRequiredXP(level: number): number {
-  return Math.floor(BASE_XP * Math.pow(XP_MULTIPLIER, level - 1));
+  // Experience required for next level follows a quadratic curve
+  // Level 1: 100 XP
+  // Level 2: 250 XP
+  // Level 3: 450 XP
+  // etc.
+  return Math.floor(100 * level + 50 * Math.pow(level - 1, 2));
 }
 
-// Helper function to calculate level from total XP
-export function calculateLevel(totalXP: number): number {
-  let level = 1;
-  let requiredXP = calculateRequiredXP(level);
-  
-  while (totalXP >= requiredXP && level < MAX_LEVEL) {
-    totalXP -= requiredXP;
-    level++;
-    requiredXP = calculateRequiredXP(level);
+export function calculateStats(
+  level: number,
+  baseStats: {
+    strength: number;
+    agility: number;
+    intelligence: number;
   }
-  
-  return level;
+) {
+  // Each level provides a small boost to all stats
+  const levelBonus = Math.floor(level * 0.5);
+
+  return {
+    strength: baseStats.strength + levelBonus,
+    agility: baseStats.agility + levelBonus,
+    intelligence: baseStats.intelligence + levelBonus
+  };
 }
 
-// Helper function to get color hex values
-export function getColorHex(color: string): string {
-  const colors: Record<string, string> = {
-    // Hair colors
-    black: '#1a1a1a',
-    brown: '#8b4513',
-    blonde: '#ffd700',
-    red: '#dc143c',
-    white: '#ffffff',
-    blue: '#4169e1',
-    purple: '#800080',
-    green: '#228b22',
-    // Skin colors
-    fair: '#ffe4c4',
-    light: '#f5deb3',
-    medium: '#deb887',
-    dark: '#d2691e',
-    deep: '#8b4513',
-    // Eye colors
-    hazel: '#daa520',
-    gray: '#808080',
-    amber: '#ffa500',
-    violet: '#800080',
-    // Clothing colors
-    yellow: '#ffd700',
-    orange: '#ffa500',
-    gold: '#ffd700',
-    silver: '#c0c0c0',
-    bronze: '#cd7f32'
+// Helper function to create a new character appearance
+export function createDefaultAppearance(): AppearanceState {
+  return {
+    hair_style: HAIR_STYLES[0],
+    hair_color: COLOR_PALETTE.HAIR[0],
+    skin_color: COLOR_PALETTE.SKIN[0],
+    eye_color: COLOR_PALETTE.EYES[0],
+    shirt_style: SHIRT_STYLES[0],
+    shirt_color: COLOR_PALETTE.CLOTHING[0],
+    pants_style: PANTS_STYLES[0],
+    pants_color: COLOR_PALETTE.CLOTHING[0],
+    shoes_style: SHOES_STYLES[0],
+    shoes_color: COLOR_PALETTE.CLOTHING[0],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   };
-  return colors[color] || '#000000';
 }
