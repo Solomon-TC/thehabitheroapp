@@ -1,19 +1,13 @@
 import { useState } from 'react';
 import { createCharacter } from '../utils/character';
-import CharacterAvatar from './CharacterAvatar';
+import type { AppearanceState, AppearanceInput, ClothingColor } from '../types/character';
 import {
   HAIR_STYLES,
   SHIRT_STYLES,
   PANTS_STYLES,
   SHOES_STYLES,
   COLOR_PALETTE,
-  createDefaultAppearance,
-  type AppearanceState,
-  type HairStyle,
-  type ShirtStyle,
-  type PantsStyle,
-  type ShoesStyle,
-  type ClothingColor
+  createDefaultAppearance
 } from '../types/character';
 
 interface CharacterCreationProps {
@@ -21,10 +15,10 @@ interface CharacterCreationProps {
 }
 
 export default function CharacterCreation({ onCharacterCreated }: CharacterCreationProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [name, setName] = useState('');
   const [appearance, setAppearance] = useState<AppearanceState>(createDefaultAppearance());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,63 +27,44 @@ export default function CharacterCreation({ onCharacterCreated }: CharacterCreat
       return;
     }
 
-    setLoading(true);
-    setError('');
-
     try {
-      await createCharacter(name, appearance);
+      setLoading(true);
+      setError('');
+      
+      const appearanceInput: AppearanceInput = {
+        hair_style: appearance.hair_style,
+        hair_color: appearance.hair_color,
+        skin_color: appearance.skin_color,
+        eye_color: appearance.eye_color,
+        shirt_style: appearance.shirt_style,
+        shirt_color: appearance.shirt_color,
+        pants_style: appearance.pants_style,
+        pants_color: appearance.pants_color,
+        shoes_style: appearance.shoes_style,
+        shoes_color: appearance.shoes_color
+      };
+
+      await createCharacter(name, appearanceInput);
       onCharacterCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create character');
+    } finally {
       setLoading(false);
     }
   };
 
-  const updateAppearance = <K extends keyof AppearanceState>(
-    key: K,
-    value: AppearanceState[K]
-  ) => {
-    setAppearance(prev => ({
-      ...prev,
-      [key]: value,
-      updated_at: new Date().toISOString()
-    }));
+  const updateAppearance = (updates: Partial<AppearanceState>) => {
+    setAppearance(prev => ({ ...prev, ...updates }));
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 text-center mb-8">
-        Create Your Character
-      </h1>
+    <div className="max-w-2xl mx-auto p-6 rpg-panel">
+      <h1 className="text-2xl font-pixel text-rpg-primary mb-6">Create Your Character</h1>
 
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-600">{error}</p>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Character Preview */}
-        <div className="flex justify-center">
-          <CharacterAvatar
-            size="lg"
-            className="h-32 w-32"
-            hairStyle={appearance.hair_style}
-            hairColor={appearance.hair_color}
-            skinColor={appearance.skin_color}
-            eyeColor={appearance.eye_color}
-            shirtStyle={appearance.shirt_style}
-            shirtColor={appearance.shirt_color}
-            pantsStyle={appearance.pants_style}
-            pantsColor={appearance.pants_color}
-            shoesStyle={appearance.shoes_style}
-            shoesColor={appearance.shoes_color}
-          />
-        </div>
-
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* Name Input */}
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="name" className="block text-sm font-medium text-rpg-light mb-2">
             Character Name
           </label>
           <input
@@ -97,183 +72,241 @@ export default function CharacterCreation({ onCharacterCreated }: CharacterCreat
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            required
+            className="rpg-border w-full p-2 bg-transparent text-rpg-light"
+            placeholder="Enter character name"
           />
         </div>
 
         {/* Appearance Customization */}
-        <div className="space-y-6">
-          {/* Hair */}
+        <div className="space-y-4">
+          {/* Hair Style */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Hair Style</label>
-            <select
-              value={appearance.hair_style}
-              onChange={(e) => updateAppearance('hair_style', e.target.value as HairStyle)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            >
-              {HAIR_STYLES.map(style => (
-                <option key={style} value={style}>
-                  {style.charAt(0).toUpperCase() + style.slice(1)}
-                </option>
+            <label className="block text-sm font-medium text-rpg-light mb-2">
+              Hair Style
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {HAIR_STYLES.map((style) => (
+                <button
+                  key={style}
+                  type="button"
+                  onClick={() => updateAppearance({ hair_style: style })}
+                  className={`rpg-button ${
+                    appearance.hair_style === style ? 'ring-2 ring-rpg-primary' : ''
+                  }`}
+                >
+                  {style}
+                </button>
               ))}
-            </select>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700">Hair Color</label>
-              <div className="mt-2 grid grid-cols-5 gap-2">
-                {COLOR_PALETTE.HAIR.map(color => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={`w-8 h-8 rounded-full ${appearance.hair_color === color ? 'ring-2 ring-offset-2 ring-indigo-500' : ''}`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => updateAppearance('hair_color', color)}
-                  />
-                ))}
-              </div>
             </div>
           </div>
 
-          {/* Skin */}
+          {/* Hair Color */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Skin Color</label>
-            <div className="mt-2 grid grid-cols-5 gap-2">
-              {COLOR_PALETTE.SKIN.map(color => (
+            <label className="block text-sm font-medium text-rpg-light mb-2">
+              Hair Color
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {COLOR_PALETTE.hair.map((color) => (
                 <button
-                  key={color}
+                  key={color.value}
                   type="button"
-                  className={`w-8 h-8 rounded-full ${appearance.skin_color === color ? 'ring-2 ring-offset-2 ring-indigo-500' : ''}`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => updateAppearance('skin_color', color)}
+                  onClick={() => updateAppearance({ hair_color: color.value })}
+                  className={`w-8 h-8 rounded-full ${
+                    appearance.hair_color === color.value ? 'ring-2 ring-rpg-primary' : ''
+                  }`}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
                 />
               ))}
             </div>
           </div>
 
-          {/* Eyes */}
+          {/* Skin Color */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Eye Color</label>
-            <div className="mt-2 grid grid-cols-5 gap-2">
-              {COLOR_PALETTE.EYES.map(color => (
+            <label className="block text-sm font-medium text-rpg-light mb-2">
+              Skin Color
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {COLOR_PALETTE.skin.map((color) => (
                 <button
-                  key={color}
+                  key={color.value}
                   type="button"
-                  className={`w-8 h-8 rounded-full ${appearance.eye_color === color ? 'ring-2 ring-offset-2 ring-indigo-500' : ''}`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => updateAppearance('eye_color', color)}
+                  onClick={() => updateAppearance({ skin_color: color.value })}
+                  className={`w-8 h-8 rounded-full ${
+                    appearance.skin_color === color.value ? 'ring-2 ring-rpg-primary' : ''
+                  }`}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
                 />
               ))}
             </div>
           </div>
 
-          {/* Outfit */}
-          <div className="space-y-4">
-            {/* Shirt */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Shirt Style</label>
-              <select
-                value={appearance.shirt_style}
-                onChange={(e) => updateAppearance('shirt_style', e.target.value as ShirtStyle)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              >
-                {SHIRT_STYLES.map(style => (
-                  <option key={style} value={style}>
-                    {style.charAt(0).toUpperCase() + style.slice(1)}
-                  </option>
-                ))}
-              </select>
-
-              <div className="mt-2">
-                <label className="block text-sm font-medium text-gray-700">Shirt Color</label>
-                <div className="mt-2 grid grid-cols-5 gap-2">
-                  {COLOR_PALETTE.CLOTHING.map(color => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`w-8 h-8 rounded-full ${appearance.shirt_color === color ? 'ring-2 ring-offset-2 ring-indigo-500' : ''}`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => updateAppearance('shirt_color', color as ClothingColor)}
-                    />
-                  ))}
-                </div>
-              </div>
+          {/* Eye Color */}
+          <div>
+            <label className="block text-sm font-medium text-rpg-light mb-2">
+              Eye Color
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {COLOR_PALETTE.eyes.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() => updateAppearance({ eye_color: color.value })}
+                  className={`w-8 h-8 rounded-full ${
+                    appearance.eye_color === color.value ? 'ring-2 ring-rpg-primary' : ''
+                  }`}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                />
+              ))}
             </div>
+          </div>
 
-            {/* Pants */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Pants Style</label>
-              <select
-                value={appearance.pants_style}
-                onChange={(e) => updateAppearance('pants_style', e.target.value as PantsStyle)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              >
-                {PANTS_STYLES.map(style => (
-                  <option key={style} value={style}>
-                    {style.charAt(0).toUpperCase() + style.slice(1)}
-                  </option>
-                ))}
-              </select>
-
-              <div className="mt-2">
-                <label className="block text-sm font-medium text-gray-700">Pants Color</label>
-                <div className="mt-2 grid grid-cols-5 gap-2">
-                  {COLOR_PALETTE.CLOTHING.map(color => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`w-8 h-8 rounded-full ${appearance.pants_color === color ? 'ring-2 ring-offset-2 ring-indigo-500' : ''}`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => updateAppearance('pants_color', color as ClothingColor)}
-                    />
-                  ))}
-                </div>
-              </div>
+          {/* Shirt Style */}
+          <div>
+            <label className="block text-sm font-medium text-rpg-light mb-2">
+              Shirt Style
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {SHIRT_STYLES.map((style) => (
+                <button
+                  key={style}
+                  type="button"
+                  onClick={() => updateAppearance({ shirt_style: style })}
+                  className={`rpg-button ${
+                    appearance.shirt_style === style ? 'ring-2 ring-rpg-primary' : ''
+                  }`}
+                >
+                  {style}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Shoes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Shoes Style</label>
-              <select
-                value={appearance.shoes_style}
-                onChange={(e) => updateAppearance('shoes_style', e.target.value as ShoesStyle)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              >
-                {SHOES_STYLES.map(style => (
-                  <option key={style} value={style}>
-                    {style.charAt(0).toUpperCase() + style.slice(1)}
-                  </option>
-                ))}
-              </select>
+          {/* Shirt Color */}
+          <div>
+            <label className="block text-sm font-medium text-rpg-light mb-2">
+              Shirt Color
+            </label>
+            <div className="grid grid-cols-8 gap-2">
+              {COLOR_PALETTE.clothing.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() => updateAppearance({ shirt_color: color.value })}
+                  className={`w-8 h-8 rounded-full ${
+                    appearance.shirt_color === color.value ? 'ring-2 ring-rpg-primary' : ''
+                  }`}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                />
+              ))}
+            </div>
+          </div>
 
-              <div className="mt-2">
-                <label className="block text-sm font-medium text-gray-700">Shoes Color</label>
-                <div className="mt-2 grid grid-cols-5 gap-2">
-                  {COLOR_PALETTE.CLOTHING.map(color => (
-                    <button
-                      key={color}
-                      type="button"
-                      className={`w-8 h-8 rounded-full ${appearance.shoes_color === color ? 'ring-2 ring-offset-2 ring-indigo-500' : ''}`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => updateAppearance('shoes_color', color as ClothingColor)}
-                    />
-                  ))}
-                </div>
-              </div>
+          {/* Pants Style */}
+          <div>
+            <label className="block text-sm font-medium text-rpg-light mb-2">
+              Pants Style
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {PANTS_STYLES.map((style) => (
+                <button
+                  key={style}
+                  type="button"
+                  onClick={() => updateAppearance({ pants_style: style })}
+                  className={`rpg-button ${
+                    appearance.pants_style === style ? 'ring-2 ring-rpg-primary' : ''
+                  }`}
+                >
+                  {style}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Pants Color */}
+          <div>
+            <label className="block text-sm font-medium text-rpg-light mb-2">
+              Pants Color
+            </label>
+            <div className="grid grid-cols-8 gap-2">
+              {COLOR_PALETTE.clothing.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() => updateAppearance({ pants_color: color.value })}
+                  className={`w-8 h-8 rounded-full ${
+                    appearance.pants_color === color.value ? 'ring-2 ring-rpg-primary' : ''
+                  }`}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Shoes Style */}
+          <div>
+            <label className="block text-sm font-medium text-rpg-light mb-2">
+              Shoes Style
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {SHOES_STYLES.map((style) => (
+                <button
+                  key={style}
+                  type="button"
+                  onClick={() => updateAppearance({ shoes_style: style })}
+                  className={`rpg-button ${
+                    appearance.shoes_style === style ? 'ring-2 ring-rpg-primary' : ''
+                  }`}
+                >
+                  {style}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Shoes Color */}
+          <div>
+            <label className="block text-sm font-medium text-rpg-light mb-2">
+              Shoes Color
+            </label>
+            <div className="grid grid-cols-8 gap-2">
+              {COLOR_PALETTE.clothing.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() => updateAppearance({ shoes_color: color.value })}
+                  className={`w-8 h-8 rounded-full ${
+                    appearance.shoes_color === color.value ? 'ring-2 ring-rpg-primary' : ''
+                  }`}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                />
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Submit Button */}
-        <div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-          >
-            {loading ? 'Creating...' : 'Create Character'}
-          </button>
-        </div>
+        {error && (
+          <div className="text-red-500 text-sm">{error}</div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="rpg-button w-full"
+        >
+          {loading ? (
+            <div className="flex items-center justify-center">
+              <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+            </div>
+          ) : (
+            'Create Character'
+          )}
+        </button>
       </form>
     </div>
   );

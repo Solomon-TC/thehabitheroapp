@@ -1,114 +1,62 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import {
-  Character,
-  CharacterAppearance,
-  calculateRequiredXP,
-  calculateStats,
-  XP_REWARDS
-} from '../types/character';
-import { useNotificationHelpers } from '../contexts/NotificationContext';
-import type { Stats } from '../types/database';
+import type { Character, AppearanceInput } from '../types/character';
 
-export async function getCharacter() {
-  const supabase = createClientComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+// Base XP required for level 1
+const BASE_XP = 100;
+// XP multiplier for each level
+const LEVEL_MULTIPLIER = 1.5;
 
-  const { data: character, error: characterError } = await supabase
-    .from('characters')
-    .select(`
-      *,
-      character_appearance (*)
-    `)
-    .eq('user_id', user.id)
-    .single();
-
-  if (characterError) throw characterError;
-  return character;
-}
-
-export async function getCharacterStats(characterId: string): Promise<Stats> {
-  const supabase = createClientComponentClient();
-
-  const { data: character, error: characterError } = await supabase
-    .from('characters')
-    .select(`
-      *,
-      experience_logs (amount),
-      achievements (achievement_type)
-    `)
-    .eq('id', characterId)
-    .single();
-
-  if (characterError) throw characterError;
-
-  // Get habit completion stats
-  const { data: habitStats, error: habitError } = await supabase
-    .from('habit_logs')
-    .select('*', { count: 'exact' })
-    .eq('character_id', characterId);
-
-  if (habitError) throw habitError;
-
-  // Get goal completion stats
-  const { data: goalStats, error: goalError } = await supabase
-    .from('goals')
-    .select('*', { count: 'exact' })
-    .eq('character_id', characterId);
-
-  if (goalError) throw goalError;
-
-  // Calculate total experience
-  const totalExperience = character.experience_logs?.reduce(
-    (sum: number, log: { amount: number }) => sum + log.amount,
-    0
-  ) || 0;
-
-  return {
-    character,
-    habits_completed: habitStats?.length || 0,
-    goals_completed: goalStats?.filter(g => g.status === 'completed').length || 0,
-    total_goals: goalStats?.length || 0,
-    total_experience: totalExperience,
-    achievements_earned: character.achievements?.length || 0,
-    streak_days: 0 // TODO: Implement streak calculation
-  };
+export function calculateRequiredXP(level: number): number {
+  return Math.floor(BASE_XP * Math.pow(LEVEL_MULTIPLIER, level - 1));
 }
 
 export async function createCharacter(
   name: string,
-  appearance: Omit<CharacterAppearance, 'id' | 'character_id'>
-) {
+  appearance: AppearanceInput
+): Promise<Character> {
   const supabase = createClientComponentClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  // Start a transaction
-  const { data: character, error: characterError } = await supabase
+  // Check if character already exists
+  const { data: existingCharacter } = await supabase
+    .from('characters')
+    .select('id')
+    .eq('user_id', user.id)
+    .single();
+
+  if (existingCharacter) {
+    throw new Error('Character already exists');
+  }
+
+  // Create new character
+  const { data: character, error } = await supabase
     .from('characters')
     .insert({
       user_id: user.id,
       name,
       level: 1,
       experience: 0,
-      strength: 10,
-      agility: 10,
-      intelligence: 10
+      strength: 5,
+      agility: 5,
+      intelligence: 5
     })
     .select()
     .single();
 
-  if (characterError) throw characterError;
+  if (error) throw error;
+  if (!character) throw new Error('Failed to create character');
 
+  // Create character appearance
   const { error: appearanceError } = await supabase
-    .from('character_appearance')
+    .from('character_appearances')
     .insert({
       character_id: character.id,
       ...appearance
     });
 
   if (appearanceError) {
-    // Rollback by deleting the character if appearance creation fails
+    // Rollback character creation if appearance creation fails
     await supabase
       .from('characters')
       .delete()
@@ -116,226 +64,168 @@ export async function createCharacter(
     throw appearanceError;
   }
 
-  return character;
+  // Get complete character with appearance
+  const { data: completeCharacter, error: getError } = await supabase
+    .from('characters')
+    .select(`
+      *,
+      character_appearance:character_appearances(*)
+    `)
+    .eq('id', character.id)
+    .single();
+
+  if (getError) throw getError;
+  if (!completeCharacter) throw new Error('Failed to retrieve character');
+
+  return completeCharacter as Character;
 }
 
-export async function updateCharacterAppearance(
-  characterId: string,
-  appearance: Partial<Omit<CharacterAppearance, 'id' | 'character_id'>>
-) {
+export async function getCharacter(): Promise<Character> {
   const supabase = createClientComponentClient();
-  const { error } = await supabase
-    .from('character_appearance')
-    .update(appearance)
-    .eq('character_id', characterId);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data: character, error } = await supabase
+    .from('characters')
+    .select(`
+      *,
+      character_appearance:character_appearances(*)
+    `)
+    .eq('user_id', user.id)
+    .single();
 
   if (error) throw error;
+  if (!character) throw new Error('Character not found');
+
+  return character as Character;
 }
 
-export async function addExperience(characterId: string, amount: number) {
+export async function addExperience(characterId: string, amount: number): Promise<void> {
   const supabase = createClientComponentClient();
-
-  // Get current character stats
-  const { data: character, error: characterError } = await supabase
+  const { data: character, error: getError } = await supabase
     .from('characters')
-    .select('*')
+    .select('experience, level, strength, agility, intelligence')
     .eq('id', characterId)
     .single();
 
-  if (characterError) throw characterError;
+  if (getError) throw getError;
+  if (!character) throw new Error('Character not found');
 
-  // Calculate new experience and check for level up
   const newExperience = character.experience + amount;
   let newLevel = character.level;
-  let requiredXP = calculateRequiredXP(newLevel);
 
-  // Handle multiple level ups
-  while (newExperience >= requiredXP) {
+  // Check if character should level up
+  while (newExperience >= calculateRequiredXP(newLevel + 1)) {
     newLevel++;
-    requiredXP = calculateRequiredXP(newLevel);
   }
 
-  // Calculate new stats if leveled up
-  const stats = newLevel > character.level
-    ? calculateStats(newLevel, {
-        strength: character.strength,
-        agility: character.agility,
-        intelligence: character.intelligence
-      })
-    : null;
-
-  // Update character
   const { error: updateError } = await supabase
     .from('characters')
     .update({
       experience: newExperience,
       level: newLevel,
-      ...(stats && {
-        strength: stats.strength,
-        agility: stats.agility,
-        intelligence: stats.intelligence
-      }),
-      updated_at: new Date().toISOString()
+      // Increase stats on level up
+      ...(newLevel > character.level ? {
+        strength: character.strength + 1,
+        agility: character.agility + 1,
+        intelligence: character.intelligence + 1,
+      } : {})
     })
     .eq('id', characterId);
 
   if (updateError) throw updateError;
-
-  // Log experience gain
-  const { error: logError } = await supabase
-    .from('experience_logs')
-    .insert({
-      character_id: characterId,
-      amount,
-      reason: 'action_completed',
-      levels_gained: newLevel - character.level
-    });
-
-  if (logError) throw logError;
-
-  return {
-    newLevel,
-    leveledUp: newLevel > character.level,
-    newExperience,
-    stats
-  };
 }
 
-export async function calculateStreakBonus(characterId: string, habitId: string) {
+export async function checkAchievements(characterId: string): Promise<void> {
   const supabase = createClientComponentClient();
+  
+  // Get character's current stats
+  const { data: character, error: characterError } = await supabase
+    .from('characters')
+    .select(`
+      id,
+      level,
+      experience,
+      strength,
+      agility,
+      intelligence,
+      habits:habits(count),
+      goals:goals(count)
+    `)
+    .eq('id', characterId)
+    .single();
 
-  // Get the last 7 days of habit completions
+  if (characterError) throw characterError;
+  if (!character) throw new Error('Character not found');
+
+  // Check for achievements
+  const achievements = [];
+
+  // Level achievements
+  if (character.level >= 5) achievements.push('Apprentice');
+  if (character.level >= 10) achievements.push('Journeyman');
+  if (character.level >= 20) achievements.push('Master');
+
+  // Stats achievements
+  if (character.strength >= 10) achievements.push('Warrior');
+  if (character.agility >= 10) achievements.push('Scout');
+  if (character.intelligence >= 10) achievements.push('Sage');
+
+  // Habit/Goal achievements
+  if (character.habits.count >= 5) achievements.push('Questmaster');
+  if (character.goals.count >= 3) achievements.push('Epic Hero');
+
+  // Add achievements to database
+  for (const title of achievements) {
+    const { error: achievementError } = await supabase
+      .from('achievements')
+      .upsert({
+        character_id: characterId,
+        title,
+        unlocked_at: new Date().toISOString()
+      }, {
+        onConflict: 'character_id,title'
+      });
+
+    if (achievementError) throw achievementError;
+  }
+}
+
+export async function calculateStreakBonus(characterId: string, habitId: string): Promise<number> {
+  const supabase = createClientComponentClient();
+  
+  // Get habit logs for the last 7 days
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
   const { data: logs, error } = await supabase
     .from('habit_logs')
     .select('completed_at')
     .eq('habit_id', habitId)
-    .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    .gte('completed_at', sevenDaysAgo.toISOString())
     .order('completed_at', { ascending: false });
 
   if (error) throw error;
 
-  // Calculate streak (consecutive days)
-  let streak = 1;
-  for (let i = 0; i < logs.length - 1; i++) {
-    const current = new Date(logs[i].completed_at);
-    const previous = new Date(logs[i + 1].completed_at);
-    const diffDays = Math.floor((current.getTime() - previous.getTime()) / (24 * 60 * 60 * 1000));
-    
-    if (diffDays === 1) {
+  // Calculate streak
+  let streak = 0;
+  let currentDate = new Date();
+  
+  for (const log of logs) {
+    const logDate = new Date(log.completed_at);
+    if (logDate.toDateString() === currentDate.toDateString()) {
       streak++;
+      currentDate.setDate(currentDate.getDate() - 1);
     } else {
       break;
     }
   }
 
-  // Award bonus XP for streaks
-  if (streak > 1) {
-    await addExperience(characterId, XP_REWARDS.STREAK_BONUS * streak);
+  // Award XP bonus based on streak
+  const streakBonus = streak * 5; // 5 XP per day in streak
+  if (streakBonus > 0) {
+    await addExperience(characterId, streakBonus);
   }
 
   return streak;
-}
-
-export async function checkAchievements(characterId: string) {
-  const supabase = createClientComponentClient();
-
-  // Get character progress
-  const { data: progress, error: progressError } = await supabase
-    .from('characters')
-    .select(`
-      level,
-      habit_logs (count),
-      goals (count)
-    `)
-    .eq('id', characterId)
-    .single();
-
-  if (progressError) throw progressError;
-
-  const achievements = [];
-
-  // Level achievements
-  if (progress.level >= 5) achievements.push('reached_level_5');
-  if (progress.level >= 10) achievements.push('reached_level_10');
-  if (progress.level >= 25) achievements.push('reached_level_25');
-
-  // Habit achievements
-  const habitCount = progress.habit_logs[0]?.count || 0;
-  if (habitCount >= 10) achievements.push('complete_10_habits');
-  if (habitCount >= 50) achievements.push('complete_50_habits');
-  if (habitCount >= 100) achievements.push('complete_100_habits');
-
-  // Goal achievements
-  const goalCount = progress.goals[0]?.count || 0;
-  if (goalCount >= 5) achievements.push('complete_5_goals');
-  if (goalCount >= 25) achievements.push('complete_25_goals');
-  if (goalCount >= 50) achievements.push('complete_50_goals');
-
-  // Award achievements not already earned
-  for (const achievement of achievements) {
-    const { data: existing } = await supabase
-      .from('achievements')
-      .select()
-      .eq('character_id', characterId)
-      .eq('achievement_type', achievement)
-      .single();
-
-    if (!existing) {
-      await supabase
-        .from('achievements')
-        .insert({
-          character_id: characterId,
-          achievement_type: achievement
-        });
-
-      // Award XP for new achievement
-      await addExperience(characterId, XP_REWARDS.ACHIEVEMENT);
-    }
-  }
-
-  return achievements;
-}
-
-export function useCharacterNotifications() {
-  const { showLevelUp, showAchievement } = useNotificationHelpers();
-
-  const handleLevelUp = (level: number) => {
-    showLevelUp(level);
-  };
-
-  const handleNewAchievement = (achievementType: string) => {
-    const achievementTitles: Record<string, string> = {
-      'reached_level_5': 'Novice Adventurer',
-      'reached_level_10': 'Seasoned Adventurer',
-      'reached_level_25': 'Master Adventurer',
-      'complete_10_habits': 'Habit Beginner',
-      'complete_50_habits': 'Habit Expert',
-      'complete_100_habits': 'Habit Master',
-      'complete_5_goals': 'Goal Setter',
-      'complete_25_goals': 'Goal Achiever',
-      'complete_50_goals': 'Goal Master'
-    };
-
-    const achievementMessages: Record<string, string> = {
-      'reached_level_5': "You've reached level 5! Keep up the great work!",
-      'reached_level_10': "Level 10 achieved! You're becoming a true master of habits!",
-      'reached_level_25': "Level 25! You're an inspiration to others!",
-      'complete_10_habits': "You've completed 10 habits! A great start to your journey!",
-      'complete_50_habits': "Incredible! 50 habits completed!",
-      'complete_100_habits': "Amazing! You've completed 100 habits!",
-      'complete_5_goals': "You've achieved 5 goals! Keep pushing forward!",
-      'complete_25_goals': "25 goals achieved! You're unstoppable!",
-      'complete_50_goals': "Phenomenal! 50 goals accomplished!"
-    };
-
-    showAchievement(
-      achievementTitles[achievementType] || 'Achievement Unlocked!',
-      achievementMessages[achievementType] || "You've unlocked a new achievement!"
-    );
-  };
-
-  return {
-    handleLevelUp,
-    handleNewAchievement
-  };
 }

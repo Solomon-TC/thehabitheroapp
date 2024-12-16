@@ -1,3 +1,144 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: 'PixelFont';
+  src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+}
+
+:root {
+  --primary-color: #4F46E5;
+  --secondary-color: #7C3AED;
+  --accent-color: #F59E0B;
+  --background-dark: #1F2937;
+  --text-light: #F3F4F6;
+}
+
+body {
+  background-image: linear-gradient(to bottom right, var(--background-dark), #111827);
+  color: var(--text-light);
+  font-family: 'Inter', sans-serif;
+}
+
+/* RPG-style components */
+.rpg-border {
+  @apply border-2 border-gray-700 bg-gray-800/50 rounded-lg shadow-lg backdrop-blur-sm;
+  box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
+}
+
+.rpg-button {
+  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 transform hover:scale-105;
+  background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+  box-shadow: 0 0 15px rgba(79, 70, 229, 0.3);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.rpg-panel {
+  @apply p-6 rounded-xl backdrop-blur-sm;
+  background: rgba(31, 41, 55, 0.8);
+  border: 2px solid rgba(79, 70, 229, 0.3);
+  box-shadow: 0 0 20px rgba(79, 70, 229, 0.2);
+}
+
+/* Progress bars */
+.progress-bar {
+  @apply h-4 rounded-full overflow-hidden relative bg-gray-700;
+}
+
+.progress-bar-fill {
+  @apply h-full transition-all duration-500 ease-out;
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+  box-shadow: 0 0 10px rgba(79, 70, 229, 0.5);
+}
+
+/* Stat badges */
+.stat-badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+  box-shadow: 0 0 10px rgba(79, 70, 229, 0.3);
+}
+
+/* Achievement animations */
+@keyframes achievement-unlock {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.achievement-popup {
+  animation: achievement-unlock 0.6s ease-out forwards;
+}
+
+/* Level up animation */
+@keyframes level-up {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); filter: brightness(1.5); }
+  100% { transform: scale(1); }
+}
+
+.level-up {
+  animation: level-up 1s ease-out;
+}
+
+/* Quest cards */
+.quest-card {
+  @apply rpg-border p-4 transition-all duration-300 hover:scale-102;
+  background: linear-gradient(135deg, rgba(31, 41, 55, 0.9), rgba(17, 24, 39, 0.9));
+}
+
+.quest-card:hover {
+  box-shadow: 0 0 20px rgba(79, 70, 229, 0.4);
+}
+
+/* Character stats */
+.stat-container {
+  @apply rpg-panel grid grid-cols-3 gap-4;
+  background: linear-gradient(135deg, rgba(31, 41, 55, 0.8), rgba(17, 24, 39, 0.8));
+}
+
+.stat-item {
+  @apply flex flex-col items-center p-3 rounded-lg;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+/* XP Bar */
+.xp-bar {
+  @apply h-2 rounded-full overflow-hidden bg-gray-700 relative;
+}
+
+.xp-fill {
+  @apply h-full transition-all duration-500;
+  background: linear-gradient(90deg, #4F46E5, #7C3AED);
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
+}
+
+/* Pixel art elements */
+.pixel-border {
+  image-rendering: pixelated;
+  border-style: solid;
+  border-width: 4px;
+  border-image-slice: 2;
+  border-image-width: 2;
+  border-image-outset: 0;
+  border-image-source: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAYdEVYdFNvZnR3YXJlAHBhaW50Lm5ldCA0LjEuNv1OCegAAAAoSURBVChTY/j//z8DGPz//x+MOeAYqyAIQ9WiYwxBmAKYIQwMDAwA+f0IDv/G9PAAAAAASUVORK5CYII=");
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--primary-color), var(--secondary-color));
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(var(--secondary-color), var(--primary-color));
+}

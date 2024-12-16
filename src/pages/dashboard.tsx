@@ -31,45 +31,96 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      <div className="flex justify-center items-center min-h-screen bg-rpg-dark">
+        <div className="animate-spin-slow text-rpg-primary">
+          <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
       </div>
     );
   }
 
   if (error || !character) {
     return (
-      <div className="text-red-600 text-center py-4">
-        {error || 'Failed to load dashboard'}
+      <div className="flex justify-center items-center min-h-screen bg-rpg-dark">
+        <div className="text-red-500 font-pixel text-center p-4 rpg-panel animate-shake">
+          {error || 'Failed to load quest log'}
+          <button 
+            onClick={loadCharacter}
+            className="mt-4 rpg-button text-sm"
+          >
+            Retry Quest
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-rpg-dark-darker to-rpg-dark p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
         {/* Character Section */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="rpg-panel animate-fade-in">
           <CharacterDisplay character={character} onUpdate={loadCharacter} />
         </div>
 
-        {/* Habits Section */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Daily Quests</h2>
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="stat-container animate-float">
+            <div className="text-center">
+              <div className="text-2xl font-pixel text-rpg-primary">Level {character.level}</div>
+              <div className="text-sm text-rpg-light-darker mt-1">{character.experience} XP</div>
+            </div>
+          </div>
+          
+          <div className="stat-container animate-float delay-100">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="stat-item">
+                <span className="text-rarity-rare">STR</span>
+                <span className="text-xl">{character.strength}</span>
+              </div>
+              <div className="stat-item">
+                <span className="text-rarity-epic">AGI</span>
+                <span className="text-xl">{character.agility}</span>
+              </div>
+              <div className="stat-item">
+                <span className="text-rarity-legendary">INT</span>
+                <span className="text-xl">{character.intelligence}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="stat-container animate-float delay-200">
+            <div className="text-center">
+              <div className="text-sm text-rpg-light-darker">Journey Started</div>
+              <div className="text-rpg-light mt-1">
+                {new Date(character.created_at).toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Daily Quests Section */}
+        <div className="rpg-panel">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-pixel text-rpg-primary">Daily Quests</h2>
             <button
               onClick={() => setShowAddHabit(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="rpg-button"
             >
-              <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Daily Quest
+              <span className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                New Quest
+              </span>
             </button>
           </div>
 
           {showAddHabit && (
-            <div className="mb-6">
+            <div className="mb-6 rpg-border p-4 animate-achievement">
               <AddHabitForm
                 onHabitAdded={() => {
                   setShowAddHabit(false);
@@ -83,23 +134,25 @@ export default function Dashboard() {
           <HabitList onHabitCompleted={loadCharacter} />
         </div>
 
-        {/* Goals Section */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Epic Quests</h2>
+        {/* Epic Quests Section */}
+        <div className="rpg-panel">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-pixel text-rpg-secondary">Epic Quests</h2>
             <button
               onClick={() => setShowAddGoal(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="rpg-button"
             >
-              <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Epic Quest
+              <span className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                New Epic Quest
+              </span>
             </button>
           </div>
 
           {showAddGoal && (
-            <div className="mb-6">
+            <div className="mb-6 rpg-border p-4 animate-achievement">
               <AddGoalForm
                 onGoalAdded={() => {
                   setShowAddGoal(false);
@@ -111,47 +164,6 @@ export default function Dashboard() {
           )}
 
           <GoalList onGoalUpdated={loadCharacter} />
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500">Level</div>
-            <div className="mt-1 text-3xl font-semibold text-gray-900">
-              {character.level}
-            </div>
-            <div className="mt-1 text-sm text-gray-500">
-              {character.experience} XP
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500">Stats</div>
-            <div className="mt-2 space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Strength</span>
-                <span className="text-gray-900">{character.strength}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Agility</span>
-                <span className="text-gray-900">{character.agility}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Intelligence</span>
-                <span className="text-gray-900">{character.intelligence}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-sm font-medium text-gray-500">Journey Started</div>
-            <div className="mt-1 text-gray-900">
-              {new Date(character.created_at).toLocaleDateString()}
-            </div>
-            <div className="mt-1 text-sm text-gray-500">
-              Keep up the great work!
-            </div>
-          </div>
         </div>
       </div>
     </div>

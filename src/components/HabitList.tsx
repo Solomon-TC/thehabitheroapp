@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getUserHabits, completeHabit } from '../utils/database';
-import { useNotificationHelpers } from '../contexts/NotificationContext';
 import type { Habit } from '../types/database';
 
 interface HabitListProps {
@@ -8,10 +7,9 @@ interface HabitListProps {
 }
 
 export default function HabitList({ onHabitCompleted }: HabitListProps) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [habits, setHabits] = useState<Habit[]>([]);
-  const { showSuccess } = useNotificationHelpers();
+  const [loading, setLoading] = useState(true);
+  const [completingHabit, setCompletingHabit] = useState<string | null>(null);
 
   useEffect(() => {
     loadHabits();
@@ -21,97 +19,136 @@ export default function HabitList({ onHabitCompleted }: HabitListProps) {
     try {
       const data = await getUserHabits();
       setHabits(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load habits');
+    } catch (error) {
+      console.error('Failed to load habits:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleComplete = async (habit: Habit) => {
+  const handleComplete = async (habitId: string) => {
     try {
-      await completeHabit(habit.id);
+      setCompletingHabit(habitId);
+      await completeHabit(habitId);
       await loadHabits();
       onHabitCompleted();
-      showSuccess(
-        'Habit Completed!',
-        `You've completed "${habit.name}" and earned experience!`
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to complete habit');
+      
+      // Show completion animation
+      const element = document.getElementById(`habit-${habitId}`);
+      if (element) {
+        element.classList.add('animate-level-up');
+        setTimeout(() => {
+          element.classList.remove('animate-level-up');
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Failed to complete habit:', error);
+    } finally {
+      setCompletingHabit(null);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center py-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-red-600 text-center py-4">
-        {error}
+      <div className="animate-pulse space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="rpg-border h-24"></div>
+        ))}
       </div>
     );
   }
 
   if (habits.length === 0) {
     return (
-      <div className="text-center py-8">
-        <div className="text-gray-400 mb-4">
-          <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-          </svg>
-        </div>
-        <p className="text-gray-500 mb-4">No habits yet</p>
-        <p className="text-sm text-gray-400">
-          Add your first habit to start tracking your progress
-        </p>
+      <div className="text-center py-8 rpg-panel">
+        <p className="text-rpg-light-darker font-pixel">No active quests</p>
+        <p className="text-sm text-rpg-light-darker mt-2">Add a new daily quest to begin your journey</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {habits.map(habit => (
-        <div
-          key={habit.id}
-          className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow duration-200"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">{habit.name}</h3>
-              <div className="mt-1 text-sm text-gray-500">
-                <span className="inline-flex items-center">
-                  <svg className="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  {habit.frequency}
-                </span>
-                <span className="mx-2">•</span>
-                <span className="inline-flex items-center">
-                  <svg className="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  {habit.target_days} days
-                </span>
+      {habits.map((habit) => {
+        const isCompleting = completingHabit === habit.id;
+        const today = new Date().toISOString().split('T')[0];
+        const isCompletedToday = habit.last_completed?.startsWith(today);
+
+        return (
+          <div
+            key={habit.id}
+            id={`habit-${habit.id}`}
+            className={`quest-card transform transition-all duration-300 ${
+              isCompletedToday ? 'opacity-75' : 'hover:scale-102'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-rpg-light">
+                  {habit.name}
+                </h3>
+                <div className="flex items-center mt-1 space-x-2">
+                  <span className="stat-badge text-xs">
+                    {habit.frequency}
+                  </span>
+                  {habit.streak > 0 && (
+                    <span className="stat-badge bg-gradient-to-r from-rarity-rare to-rarity-epic text-xs">
+                      🔥 {habit.streak} day streak
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={() => handleComplete(habit.id)}
+                disabled={isCompleting || isCompletedToday}
+                className={`rpg-button min-w-[120px] ${
+                  isCompletedToday
+                    ? 'bg-rpg-success cursor-default'
+                    : 'hover:scale-105 transform transition'
+                }`}
+              >
+                {isCompleting ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+                  </div>
+                ) : isCompletedToday ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Completed
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center">
+                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Complete
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mt-4">
+              <div className="progress-bar">
+                <div
+                  className="progress-bar-fill"
+                  style={{
+                    width: `${(habit.streak / habit.target_days) * 100}%`,
+                  }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-rpg-light-darker mt-1">
+                <span>{habit.streak} / {habit.target_days} days</span>
+                <span>{Math.round((habit.streak / habit.target_days) * 100)}% complete</span>
               </div>
             </div>
-            <button
-              onClick={() => handleComplete(habit)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Complete
-            </button>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
