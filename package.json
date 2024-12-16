@@ -9,7 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@headlessui/react": "^1.7.0",
+    "@fontsource/press-start-2p": "^5.1.0",
+    "@headlessui/react": "^1.7.19",
+    "@heroicons/react": "^2.2.0",
     "@supabase/auth-helpers-nextjs": "^0.8.0",
     "@supabase/auth-helpers-react": "^0.4.0",
     "@supabase/supabase-js": "^2.38.0",
