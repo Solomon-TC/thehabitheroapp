@@ -1,4 +1,4 @@
- export interface Habit {
+export interface Habit {
   id: string;
   user_id: string;
   character_id: string;
@@ -95,4 +95,60 @@ export interface Product {
 export interface Customer {
   id: string;
   stripe_customer_id: string | null;
+}
+
+export interface Database {
+  public: {
+    Tables: {
+      habits: {
+        Row: Habit;
+        Insert: Omit<Habit, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Habit, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      goals: {
+        Row: Goal;
+        Insert: Omit<Goal, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Goal, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      habit_logs: {
+        Row: HabitLog;
+        Insert: Omit<HabitLog, 'id' | 'created_at'>;
+        Update: Partial<Omit<HabitLog, 'id' | 'created_at'>>;
+      };
+      goal_progress: {
+        Row: GoalProgress;
+        Insert: Omit<GoalProgress, 'id' | 'created_at'>;
+        Update: Partial<Omit<GoalProgress, 'id' | 'created_at'>>;
+      };
+      subscriptions: {
+        Row: Subscription;
+        Insert: Omit<Subscription, 'id' | 'created_at'>;
+        Update: Partial<Omit<Subscription, 'id' | 'created_at'>>;
+      };
+      prices: {
+        Row: Price;
+        Insert: Omit<Price, 'id'>;
+        Update: Partial<Omit<Price, 'id'>>;
+      };
+      products: {
+        Row: Product;
+        Insert: Omit<Product, 'id'>;
+        Update: Partial<Omit<Product, 'id'>>;
+      };
+      customers: {
+        Row: Customer;
+        Insert: Omit<Customer, 'id'>;
+        Update: Partial<Omit<Customer, 'id'>>;
+      };
+    };
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+  };
 }
