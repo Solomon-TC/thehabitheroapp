@@ -1,5 +1,6 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import type { Character, AppearanceInput } from '../types/character';
+import type { Stats } from '../types/database';
 
 // Base XP required for level 1
 const BASE_XP = 100;
@@ -8,6 +9,69 @@ const LEVEL_MULTIPLIER = 1.5;
 
 export function calculateRequiredXP(level: number): number {
   return Math.floor(BASE_XP * Math.pow(LEVEL_MULTIPLIER, level - 1));
+}
+
+export async function getCharacterStats(characterId: string): Promise<Stats> {
+  const supabase = createClientComponentClient();
+  
+  // Get habit completion stats
+  const { count: habitsCompleted, error: habitError } = await supabase
+    .from('habit_logs')
+    .select('*', { count: 'exact' })
+    .eq('character_id', characterId);
+
+  if (habitError) throw habitError;
+
+  // Get goal completion stats
+  const { data: goalStats, error: goalError } = await supabase
+    .from('goals')
+    .select('*')
+    .eq('character_id', characterId)
+    .eq('status', 'completed');
+
+  if (goalError) throw goalError;
+
+  // Get streak stats
+  const { data: streakStats, error: streakError } = await supabase
+    .from('habits')
+    .select('streak')
+    .eq('character_id', characterId)
+    .gt('streak', 0);
+
+  if (streakError) throw streakError;
+
+  // Calculate max streak
+  const maxStreak = streakStats?.reduce((max, habit) => 
+    Math.max(max, habit.streak), 0) || 0;
+
+  // Get achievement count
+  const { data: achievements, error: achievementError } = await supabase
+    .from('achievements')
+    .select('*')
+    .eq('character_id', characterId);
+
+  if (achievementError) throw achievementError;
+
+  return {
+    habits_completed: habitsCompleted || 0,
+    goals_completed: goalStats?.length || 0,
+    max_streak: maxStreak,
+    achievements_unlocked: achievements?.length || 0,
+  };
+}
+
+export async function updateCharacterAppearance(
+  characterId: string,
+  appearance: AppearanceInput
+): Promise<void> {
+  const supabase = createClientComponentClient();
+  
+  const { error } = await supabase
+    .from('character_appearances')
+    .update(appearance)
+    .eq('character_id', characterId);
+
+  if (error) throw error;
 }
 
 export async function createCharacter(

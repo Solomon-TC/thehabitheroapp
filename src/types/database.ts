@@ -1,4 +1,4 @@
-export interface Habit {
+ export interface Habit {
   id: string;
   user_id: string;
   character_id: string;
@@ -43,6 +43,13 @@ export interface GoalProgress {
   value: number;
   notes: string | null;
   created_at: string;
+}
+
+export interface Stats {
+  habits_completed: number;
+  goals_completed: number;
+  max_streak: number;
+  achievements_unlocked: number;
 }
 
 export interface Subscription {

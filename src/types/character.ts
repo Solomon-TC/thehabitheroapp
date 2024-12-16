@@ -3,15 +3,15 @@ export type ShirtStyle = 'tshirt' | 'hoodie' | 'tank' | 'robe' | 'armor';
 export type PantsStyle = 'jeans' | 'shorts' | 'skirt' | 'leggings' | 'plate';
 export type ShoesStyle = 'sneakers' | 'boots' | 'sandals' | 'dress' | 'combat';
 
+export type HairColor = string;
+export type SkinColor = string;
+export type EyeColor = string;
+export type ClothingColor = string;
+
 export const HAIR_STYLES: HairStyle[] = ['short', 'medium', 'long', 'curly', 'spiky'];
 export const SHIRT_STYLES: ShirtStyle[] = ['tshirt', 'hoodie', 'tank', 'robe', 'armor'];
 export const PANTS_STYLES: PantsStyle[] = ['jeans', 'shorts', 'skirt', 'leggings', 'plate'];
 export const SHOES_STYLES: ShoesStyle[] = ['sneakers', 'boots', 'sandals', 'dress', 'combat'];
-
-export type ClothingColor = {
-  name: string;
-  value: string;
-};
 
 export const COLOR_PALETTE = {
   skin: [
@@ -49,30 +49,30 @@ export interface CharacterAppearance {
   id: string;
   character_id: string;
   hair_style: HairStyle;
-  hair_color: string;
-  skin_color: string;
-  eye_color: string;
+  hair_color: HairColor;
+  skin_color: SkinColor;
+  eye_color: EyeColor;
   shirt_style: ShirtStyle;
-  shirt_color: string;
+  shirt_color: ClothingColor;
   pants_style: PantsStyle;
-  pants_color: string;
+  pants_color: ClothingColor;
   shoes_style: ShoesStyle;
-  shoes_color: string;
+  shoes_color: ClothingColor;
   created_at: string;
   updated_at: string;
 }
 
 export interface AppearanceInput {
   hair_style: HairStyle;
-  hair_color: string;
-  skin_color: string;
-  eye_color: string;
+  hair_color: HairColor;
+  skin_color: SkinColor;
+  eye_color: EyeColor;
   shirt_style: ShirtStyle;
-  shirt_color: string;
+  shirt_color: ClothingColor;
   pants_style: PantsStyle;
-  pants_color: string;
+  pants_color: ClothingColor;
   shoes_style: ShoesStyle;
-  shoes_color: string;
+  shoes_color: ClothingColor;
 }
 
 export type AppearanceState = AppearanceInput;
