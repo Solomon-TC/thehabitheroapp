@@ -97,6 +97,31 @@ export interface Customer {
   stripe_customer_id: string | null;
 }
 
+export interface FriendRequest {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Friend {
+  friend_id: string;
+  friends_since: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: 'friend_request' | 'achievement' | 'level_up' | 'streak';
+  title: string;
+  message: string;
+  friend_request_id?: string;
+  read: boolean;
+  created_at: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -120,6 +145,16 @@ export interface Database {
         Insert: Omit<GoalProgress, 'id' | 'created_at'>;
         Update: Partial<Omit<GoalProgress, 'id' | 'created_at'>>;
       };
+      friend_requests: {
+        Row: FriendRequest;
+        Insert: Omit<FriendRequest, 'id' | 'created_at' | 'updated_at' | 'status'>;
+        Update: Partial<Pick<FriendRequest, 'status'>>;
+      };
+      notifications: {
+        Row: Notification;
+        Insert: Omit<Notification, 'id' | 'created_at' | 'read'>;
+        Update: Partial<Pick<Notification, 'read'>>;
+      };
       subscriptions: {
         Row: Subscription;
         Insert: Omit<Subscription, 'id' | 'created_at'>;
@@ -142,10 +177,15 @@ export interface Database {
       };
     };
     Views: {
-      [_ in never]: never;
+      friends: {
+        Row: Friend;
+      };
     };
     Functions: {
-      [_ in never]: never;
+      handle_friend_request: {
+        Args: { request_id: string; new_status: string };
+        Returns: void;
+      };
     };
     Enums: {
       [_ in never]: never;
