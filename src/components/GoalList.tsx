@@ -1,166 +1,164 @@
-import { useState, useEffect } from 'react';
-import { getUserGoals, updateGoalProgress } from '../utils/database';
-import type { Goal } from '../types/database';
+import { useEffect, useState } from 'react';
+import { createClient } from '../lib/supabase';
+import { Goal } from '../types/database';
 
 interface GoalListProps {
-  onGoalUpdated: () => void;
+  onUpdate?: (goals: Goal[]) => void;
 }
 
-export default function GoalList({ onGoalUpdated }: GoalListProps) {
+export default function GoalList({ onUpdate }: GoalListProps) {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updatingGoal, setUpdatingGoal] = useState<string | null>(null);
-  const [progressValue, setProgressValue] = useState<Record<string, number>>({});
+  const [error, setError] = useState('');
+  const supabase = createClient();
 
   useEffect(() => {
     loadGoals();
   }, []);
 
+  useEffect(() => {
+    if (onUpdate) {
+      onUpdate(goals);
+    }
+  }, [goals, onUpdate]);
+
   const loadGoals = async () => {
     try {
-      const data = await getUserGoals();
-      setGoals(data);
-      const initialProgress = Object.fromEntries(
-        data.map(goal => [goal.id, goal.current_value])
-      );
-      setProgressValue(initialProgress);
-    } catch (error) {
-      console.error('Failed to load goals:', error);
+      setLoading(true);
+      setError('');
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: goals, error: goalsError } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (goalsError) throw goalsError;
+      setGoals(goals || []);
+    } catch (err) {
+      setError('Failed to load goals');
+      console.error('Error loading goals:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdateProgress = async (goalId: string) => {
+  const handleDelete = async (goalId: string) => {
     try {
-      setUpdatingGoal(goalId);
-      const value = progressValue[goalId];
-      await updateGoalProgress(goalId, value);
-      await loadGoals();
-      onGoalUpdated();
+      const { error } = await supabase
+        .from('goals')
+        .delete()
+        .eq('id', goalId);
 
-      // Show completion animation if goal is completed
-      const goal = goals.find(g => g.id === goalId);
-      if (goal && value >= goal.target_value) {
-        const element = document.getElementById(`goal-${goalId}`);
-        if (element) {
-          element.classList.add('animate-level-up');
-          setTimeout(() => {
-            element.classList.remove('animate-level-up');
-          }, 1000);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to update goal:', error);
-    } finally {
-      setUpdatingGoal(null);
+      if (error) throw error;
+
+      setGoals(prev => prev.filter(g => g.id !== goalId));
+    } catch (err) {
+      console.error('Error deleting goal:', err);
+    }
+  };
+
+  const handleStatusUpdate = async (goalId: string, status: Goal['status']) => {
+    try {
+      const { error } = await supabase
+        .from('goals')
+        .update({ status })
+        .eq('id', goalId);
+
+      if (error) throw error;
+
+      setGoals(prev => prev.map(g => 
+        g.id === goalId ? { ...g, status } : g
+      ));
+    } catch (err) {
+      console.error('Error updating goal status:', err);
     }
   };
 
   if (loading) {
     return (
-      <div className="animate-pulse space-y-6">
-        {[...Array(2)].map((_, i) => (
-          <div key={i} className="rpg-border h-32"></div>
-        ))}
+      <div className="flex justify-center py-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rpg-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-500 text-center py-4">
+        {error}
       </div>
     );
   }
 
   if (goals.length === 0) {
     return (
-      <div className="text-center py-8 rpg-panel">
-        <p className="text-rpg-light-darker font-pixel">No epic quests</p>
-        <p className="text-sm text-rpg-light-darker mt-2">Begin your legendary journey by adding an epic quest</p>
+      <div className="text-rpg-light text-center py-8">
+        <p>No epic quests added yet.</p>
+        <p className="text-rpg-light-darker mt-2">Add some quests to begin your journey!</p>
       </div>
     );
   }
 
+  const getStatusColor = (status: Goal['status']) => {
+    switch (status) {
+      case 'completed':
+        return 'text-green-500';
+      case 'failed':
+        return 'text-red-500';
+      case 'in_progress':
+        return 'text-yellow-500';
+      default:
+        return 'text-rpg-light-darker';
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      {goals.map((goal) => {
-        const progress = (goal.current_value / goal.target_value) * 100;
-        const isCompleted = goal.status === 'completed';
-        const isUpdating = updatingGoal === goal.id;
-
-        return (
-          <div
-            key={goal.id}
-            id={`goal-${goal.id}`}
-            className={`quest-card transform transition-all duration-300 ${
-              isCompleted ? 'opacity-75' : 'hover:scale-102'
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h3 className="text-lg font-medium text-rpg-light">
-                  {goal.name}
-                </h3>
-                {goal.description && (
-                  <p className="mt-1 text-sm text-rpg-light-darker">
-                    {goal.description}
-                  </p>
-                )}
-                <div className="flex items-center mt-2 space-x-2">
-                  {goal.deadline && (
-                    <span className="stat-badge text-xs">
-                      🎯 Due {new Date(goal.deadline).toLocaleDateString()}
-                    </span>
-                  )}
-                  <span className={`stat-badge text-xs ${
-                    isCompleted ? 'bg-gradient-to-r from-rarity-epic to-rarity-legendary' : ''
-                  }`}>
-                    {isCompleted ? '✨ Completed' : '🔥 In Progress'}
-                  </span>
-                </div>
+    <div className="space-y-4">
+      {goals.map((goal) => (
+        <div key={goal.id} className="rpg-panel-secondary p-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-lg font-pixel text-rpg-light">{goal.name}</h3>
+              {goal.description && (
+                <p className="text-rpg-light-darker mt-1">{goal.description}</p>
+              )}
+              <div className="text-sm text-rpg-light-darker mt-2">
+                Progress: {goal.current_value} / {goal.target_value} {goal.unit}
               </div>
-
-              {!isCompleted && (
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    value={progressValue[goal.id] || 0}
-                    onChange={(e) => setProgressValue({
-                      ...progressValue,
-                      [goal.id]: Number(e.target.value)
-                    })}
-                    className="rpg-border w-20 text-center bg-transparent text-rpg-light"
-                    min={0}
-                    max={goal.target_value}
-                  />
-                  <button
-                    onClick={() => handleUpdateProgress(goal.id)}
-                    disabled={isUpdating}
-                    className="rpg-button min-w-[100px]"
-                  >
-                    {isUpdating ? (
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
-                      </div>
-                    ) : (
-                      'Update'
-                    )}
-                  </button>
+              {goal.deadline && (
+                <div className="text-sm text-rpg-light-darker">
+                  Due by: {new Date(goal.deadline).toLocaleDateString()}
                 </div>
               )}
+              <div className={`text-sm mt-1 ${getStatusColor(goal.status)}`}>
+                Status: {goal.status.replace('_', ' ')}
+              </div>
             </div>
-
-            {/* Progress Bar */}
-            <div className="mt-4">
-              <div className="progress-bar">
-                <div
-                  className="progress-bar-fill"
-                  style={{ width: `${Math.min(progress, 100)}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-xs text-rpg-light-darker mt-1">
-                <span>{goal.current_value} / {goal.target_value} {goal.unit || 'points'}</span>
-                <span>{Math.round(progress)}% complete</span>
-              </div>
+            <div className="flex flex-col space-y-2">
+              <select
+                value={goal.status}
+                onChange={(e) => handleStatusUpdate(goal.id, e.target.value as Goal['status'])}
+                className="rpg-select"
+              >
+                <option value="not_started">Not Started</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+              </select>
+              <button
+                onClick={() => handleDelete(goal.id)}
+                className="rpg-button-ghost text-red-500"
+              >
+                Delete
+              </button>
             </div>
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }

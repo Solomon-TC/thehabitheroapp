@@ -51,6 +51,12 @@ export default function Header() {
                 Dashboard
               </Link>
               <Link
+                href="/manage"
+                className={`nav-link ${isActive('/manage') ? 'active' : ''}`}
+              >
+                Quests
+              </Link>
+              <Link
                 href="/progress-report"
                 className={`nav-link ${isActive('/progress-report') ? 'active' : ''}`}
               >
@@ -102,6 +108,12 @@ export default function Header() {
               className={`nav-link-mobile ${isActive('/dashboard') ? 'active' : ''}`}
             >
               Dashboard
+            </Link>
+            <Link
+              href="/manage"
+              className={`nav-link-mobile ${isActive('/manage') ? 'active' : ''}`}
+            >
+              Quests
             </Link>
             <Link
               href="/progress-report"
