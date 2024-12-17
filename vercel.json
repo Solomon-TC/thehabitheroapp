@@ -6,7 +6,7 @@
   "framework": "nextjs",
   "outputDirectory": ".next",
   "env": {
-    "NEXT_PUBLIC_APP_URL": "https://habit-quest.vercel.app"
+    "NEXT_PUBLIC_APP_URL": "https://thehabitherofinal.vercel.app"
   },
   "rewrites": [
     {

@@ -1,31 +1,29 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '../lib/supabase';
-import { Friend } from '../types/database';
+import { Friend, Profile } from '../types/database';
 import CharacterAvatar from './CharacterAvatar';
 
-interface FriendCharacter {
-  id: string;
-  name: string;
-  level: number;
-  character_appearance: {
-    skin_color: string;
-    hair_color: string;
-    eye_color: string;
-    outfit_color: string;
-  };
-}
-
-interface FriendWithCharacter extends Omit<Friend, 'friend_id'> {
+interface RawFriendData {
   friend_id: string;
-  friend: {
-    id: string;
-    username: string;
-    character: FriendCharacter;
+  friends_since: string;
+  profile: Profile;
+  character: {
+    characters: Array<{
+      id: string;
+      name: string;
+      level: number;
+      character_appearance: Array<{
+        skin_color: string;
+        hair_color: string;
+        eye_color: string;
+        outfit_color: string;
+      }>;
+    }>;
   };
 }
 
-export function FriendsList() {
-  const [friends, setFriends] = useState<FriendWithCharacter[]>([]);
+export default function FriendsList() {
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const supabase = createClient();
@@ -39,53 +37,53 @@ export function FriendsList() {
       setLoading(true);
       setError('');
 
-      // First get the user's friends
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Get friends list using the friends view
       const { data: friendsData, error: friendsError } = await supabase
         .from('friends')
-        .select('friend_id, friends_since');
+        .select(`
+          friend_id,
+          friends_since,
+          profile:profiles!friend_id(
+            id,
+            username,
+            created_at,
+            updated_at
+          ),
+          character:friend_id(
+            characters(
+              id,
+              name,
+              level,
+              character_appearance:character_appearances(
+                skin_color,
+                hair_color,
+                eye_color,
+                outfit_color
+              )
+            )
+          )
+        `);
 
       if (friendsError) throw friendsError;
+      if (!friendsData) return;
 
-      // Then get the details for each friend
-      const friendPromises = friendsData.map(async (friend) => {
-        const { data: userData, error: userError } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .eq('id', friend.friend_id)
-          .single();
+      // Transform the data to match our Friend type
+      const transformedFriends: Friend[] = (friendsData as unknown as RawFriendData[]).map(friend => ({
+        friend_id: friend.friend_id,
+        friends_since: friend.friends_since,
+        profile: friend.profile,
+        character: {
+          id: friend.character.characters[0].id,
+          name: friend.character.characters[0].name,
+          level: friend.character.characters[0].level,
+          character_appearance: friend.character.characters[0].character_appearance[0]
+        }
+      }));
 
-        if (userError) throw userError;
-
-        const { data: characterData, error: characterError } = await supabase
-          .from('characters')
-          .select(`
-            id,
-            name,
-            level,
-            character_appearance:character_appearances (
-              skin_color,
-              hair_color,
-              eye_color,
-              outfit_color
-            )
-          `)
-          .eq('user_id', friend.friend_id)
-          .single();
-
-        if (characterError) throw characterError;
-
-        return {
-          ...friend,
-          friend: {
-            id: userData.id,
-            username: userData.username,
-            character: characterData
-          }
-        };
-      });
-
-      const friendsWithDetails = await Promise.all(friendPromises);
-      setFriends(friendsWithDetails as FriendWithCharacter[]);
+      setFriends(transformedFriends);
     } catch (err) {
       setError('Failed to load friends');
       console.error('Error loading friends:', err);
@@ -112,47 +110,24 @@ export function FriendsList() {
 
   if (friends.length === 0) {
     return (
-      <div className="text-rpg-light text-center py-8">
-        <p>No friends added yet.</p>
-        <p className="text-rpg-light-darker mt-2">Search for players to add them as friends!</p>
+      <div className="text-rpg-light-darker text-center py-4">
+        No friends yet. Try sending some friend requests!
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="space-y-4">
       {friends.map((friend) => (
-        <div key={friend.friend_id} className="rpg-panel">
+        <div key={friend.friend_id} className="rpg-panel-secondary p-4">
           <div className="flex items-center space-x-4">
-            <CharacterAvatar
-              appearance={friend.friend.character.character_appearance}
-              size="md"
-            />
+            <CharacterAvatar appearance={friend.character.character_appearance} />
             <div>
-              <h3 className="text-lg font-pixel text-rpg-light">
-                {friend.friend.username}
-              </h3>
-              <div className="text-sm text-rpg-light-darker">
-                Level {friend.friend.character.level} {friend.friend.character.name}
-              </div>
-              <div className="text-xs text-rpg-light-darker mt-1">
-                Friends since {new Date(friend.friends_since).toLocaleDateString()}
+              <div className="text-rpg-light font-semibold">{friend.profile.username}</div>
+              <div className="text-rpg-light-darker text-sm">
+                Level {friend.character.level} {friend.character.name}
               </div>
             </div>
-          </div>
-          <div className="mt-4 flex justify-end space-x-2">
-            <button
-              className="rpg-button-secondary text-sm"
-              onClick={() => {/* TODO: Implement view profile */}}
-            >
-              View Profile
-            </button>
-            <button
-              className="rpg-button-ghost text-sm text-red-500"
-              onClick={() => {/* TODO: Implement remove friend */}}
-            >
-              Remove
-            </button>
           </div>
         </div>
       ))}

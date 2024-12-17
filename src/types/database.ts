@@ -61,6 +61,23 @@ export interface FriendRequest {
   updated_at: string;
 }
 
+export interface Friend {
+  friend_id: string;
+  friends_since: string;
+  profile: Profile;
+  character: {
+    id: string;
+    name: string;
+    level: number;
+    character_appearance: {
+      skin_color: string;
+      hair_color: string;
+      eye_color: string;
+      outfit_color: string;
+    };
+  };
+}
+
 export interface Notification {
   id: string;
   user_id: string;

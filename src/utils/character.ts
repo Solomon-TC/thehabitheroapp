@@ -63,7 +63,7 @@ export async function addExperience(characterId: string, amount: number): Promis
   // Get current character stats
   const { data: character, error: getError } = await supabase
     .from('characters')
-    .select('level, experience')
+    .select('*')
     .eq('id', characterId)
     .single();
 

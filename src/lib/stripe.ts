@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 import { NextApiRequest } from 'next';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-11-20.acacia'
+  apiVersion: '2023-08-16'
 });
 
 export const handleStripeWebhook = async (req: NextApiRequest) => {
@@ -17,78 +17,55 @@ export const handleStripeWebhook = async (req: NextApiRequest) => {
     );
 
     switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated':
-      case 'customer.subscription.deleted':
-        const subscription = event.data.object as Stripe.Subscription;
-        // Handle subscription changes
+      case 'checkout.session.completed':
+        const session = event.data.object as Stripe.Checkout.Session;
+        // Handle successful payment
+        await handleSuccessfulPayment(session);
         break;
       default:
         console.log(`Unhandled event type ${event.type}`);
     }
 
-    return { status: 200, message: 'Webhook processed successfully' };
+    return { received: true };
   } catch (err) {
     console.error('Error processing webhook:', err);
-    throw err;
+    throw new Error(`Webhook Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
   }
 };
 
-export const createCheckoutSession = async (priceId: string, customerId: string) => {
-  try {
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment/cancelled`,
-    });
-
-    return session;
-  } catch (err) {
-    console.error('Error creating checkout session:', err);
-    throw err;
-  }
+const handleSuccessfulPayment = async (session: Stripe.Checkout.Session) => {
+  // Update user's subscription status in database
+  // This is where you would update the user's subscription status in your database
+  console.log('Processing successful payment for session:', session.id);
 };
 
-export const createCustomerPortalSession = async (customerId: string) => {
-  try {
-    const session = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/account`,
-    });
+export const createCheckoutSession = async (priceId: string, userId: string) => {
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price: priceId,
+        quantity: 1,
+      },
+    ],
+    mode: 'subscription',
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/subscription?success=true`,
+    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/subscription?canceled=true`,
+    metadata: {
+      userId,
+    },
+  });
 
-    return session;
-  } catch (err) {
-    console.error('Error creating customer portal session:', err);
-    throw err;
-  }
+  return session;
 };
 
-export const getSubscription = async (subscriptionId: string) => {
-  try {
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-    return subscription;
-  } catch (err) {
-    console.error('Error retrieving subscription:', err);
-    throw err;
-  }
-};
+export const createPortalSession = async (customerId: string) => {
+  const session = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/subscription`,
+  });
 
-export const cancelSubscription = async (subscriptionId: string) => {
-  try {
-    const subscription = await stripe.subscriptions.cancel(subscriptionId);
-    return subscription;
-  } catch (err) {
-    console.error('Error cancelling subscription:', err);
-    throw err;
-  }
+  return session;
 };
 
 export default stripe;
