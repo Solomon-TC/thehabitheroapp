@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '../lib/supabase';
 import CharacterAvatar from './CharacterAvatar';
-import { AppearanceInput } from '../types/character';
+import type { AppearanceInput } from '../types/character';
 
 interface FriendRequest {
   id: string;
+  created_at: string;
   sender: {
     id: string;
     username: string;
@@ -15,7 +16,26 @@ interface FriendRequest {
       character_appearance: AppearanceInput;
     };
   };
+}
+
+interface SupabaseFriendRequest {
+  id: string;
   created_at: string;
+  sender: {
+    id: string;
+    username: string;
+    character: {
+      id: string;
+      name: string;
+      level: number;
+      character_appearance: {
+        skin_color: string;
+        hair_color: string;
+        eye_color: string;
+        outfit_color: string;
+      }[];
+    }[];
+  };
 }
 
 export default function FriendRequests() {
@@ -25,63 +45,71 @@ export default function FriendRequests() {
   const supabase = createClient();
 
   useEffect(() => {
-    loadFriendRequests();
+    loadRequests();
   }, []);
 
-  const loadFriendRequests = async () => {
+  const loadRequests = async () => {
     try {
       setLoading(true);
       setError('');
 
-      // First get the pending requests
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Get pending friend requests
       const { data: requestsData, error: requestsError } = await supabase
         .from('friend_requests')
-        .select('id, sender_id, created_at')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+        .select(`
+          id,
+          created_at,
+          sender:sender_id (
+            id,
+            username,
+            character:characters (
+              id,
+              name,
+              level,
+              character_appearance:character_appearances (
+                skin_color,
+                hair_color,
+                eye_color,
+                outfit_color
+              )
+            )
+          )
+        `)
+        .eq('receiver_id', user.id)
+        .eq('status', 'pending');
 
       if (requestsError) throw requestsError;
+      if (!requestsData) return;
 
-      // Then get the details for each sender
-      const requestPromises = requestsData.map(async (request) => {
-        const { data: userData, error: userError } = await supabase
-          .from('profiles')
-          .select('id, username')
-          .eq('id', request.sender_id)
-          .single();
-
-        if (userError) throw userError;
-
-        const { data: characterData, error: characterError } = await supabase
-          .from('characters')
-          .select(`
-            id,
-            name,
-            level,
-            character_appearance:character_appearances (
-              skin_color,
-              hair_color,
-              eye_color,
-              outfit_color
-            )
-          `)
-          .eq('user_id', request.sender_id)
-          .single();
-
-        if (characterError) throw characterError;
-
+      // Transform the data to match our FriendRequest type
+      const fullRequests = (requestsData as unknown as SupabaseFriendRequest[]).map((request) => {
+        const character = request.sender.character[0];
+        const appearance = character.character_appearance[0];
+        
         return {
           id: request.id,
           created_at: request.created_at,
           sender: {
-            id: userData.id,
-            username: userData.username,
-            character: characterData
+            id: request.sender.id,
+            username: request.sender.username,
+            character: {
+              id: character.id,
+              name: character.name,
+              level: character.level,
+              character_appearance: {
+                skin_color: appearance.skin_color,
+                hair_color: appearance.hair_color,
+                eye_color: appearance.eye_color,
+                outfit_color: appearance.outfit_color
+              }
+            }
           }
         };
       });
 
-      const fullRequests = await Promise.all(requestPromises);
       setRequests(fullRequests);
     } catch (err) {
       setError('Failed to load friend requests');
@@ -125,7 +153,7 @@ export default function FriendRequests() {
 
   if (requests.length === 0) {
     return (
-      <div className="text-rpg-light text-center py-4">
+      <div className="text-rpg-light-darker text-center py-4">
         No pending friend requests
       </div>
     );
@@ -135,32 +163,26 @@ export default function FriendRequests() {
     <div className="space-y-4">
       {requests.map((request) => (
         <div key={request.id} className="rpg-panel-secondary p-4">
-          <div className="flex items-center space-x-4">
-            <CharacterAvatar
-              appearance={request.sender.character.character_appearance}
-              size="md"
-            />
-            <div className="flex-1">
-              <div className="text-rpg-light font-semibold">
-                {request.sender.username}
-              </div>
-              <div className="text-rpg-light-darker text-sm">
-                Level {request.sender.character.level} {request.sender.character.name}
-              </div>
-              <div className="text-rpg-light-darker text-xs mt-1">
-                Sent {new Date(request.created_at).toLocaleDateString()}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <CharacterAvatar appearance={request.sender.character.character_appearance} />
+              <div>
+                <div className="text-rpg-light font-semibold">{request.sender.username}</div>
+                <div className="text-rpg-light-darker text-sm">
+                  Level {request.sender.character.level} {request.sender.character.name}
+                </div>
               </div>
             </div>
             <div className="flex space-x-2">
               <button
                 onClick={() => handleRequest(request.id, true)}
-                className="rpg-button-primary text-sm"
+                className="rpg-button-primary"
               >
                 Accept
               </button>
               <button
                 onClick={() => handleRequest(request.id, false)}
-                className="rpg-button-ghost text-sm"
+                className="rpg-button-secondary"
               >
                 Decline
               </button>
