@@ -9,7 +9,11 @@ import {
   DEFAULT_APPEARANCE
 } from '../types/character';
 
-export default function CharacterCreation() {
+interface CharacterCreationProps {
+  onCharacterCreated?: () => void;
+}
+
+export default function CharacterCreation({ onCharacterCreated }: CharacterCreationProps) {
   const [name, setName] = useState('');
   const [appearance, setAppearance] = useState<AppearanceInput>(DEFAULT_APPEARANCE);
   const [error, setError] = useState('');
@@ -26,6 +30,9 @@ export default function CharacterCreation() {
       setLoading(true);
       setError('');
       await createCharacter(name, appearance);
+      if (onCharacterCreated) {
+        onCharacterCreated();
+      }
       window.location.href = '/dashboard';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create character');

@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '../lib/supabase';
 import AuthWrapper from '../components/AuthWrapper';
 import CharacterDisplay from '../components/CharacterDisplay';
 import HabitList from '../components/HabitList';
-import GoalList from '../components/GoalList';
-import { createClient } from '../lib/supabase';
 import type { Character } from '../types/character';
+import type { Habit } from '../types/database';
 
 function DashboardPage() {
   const [character, setCharacter] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [habits, setHabits] = useState<Habit[]>([]);
   const supabase = createClient();
 
   useEffect(() => {
@@ -34,9 +35,7 @@ function DashboardPage() {
         .single();
 
       if (characterError) throw characterError;
-      if (!character) throw new Error('Character not found');
-
-      setCharacter(character as Character);
+      setCharacter(character);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load character');
     } finally {
@@ -62,42 +61,27 @@ function DashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Character Section */}
-        <div className="lg:col-span-1">
-          <CharacterDisplay />
-        </div>
+      <h1 className="text-3xl font-pixel text-rpg-primary mb-8">Your Quest Board</h1>
 
-        {/* Quests Section */}
-        <div className="lg:col-span-2 space-y-8">
+      {character && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Character Stats */}
+          <div className="md:col-span-1">
+            <CharacterDisplay character={character} />
+          </div>
+
           {/* Daily Quests */}
-          <div className="rpg-panel">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-pixel text-rpg-light">Daily Quests</h2>
-              <a href="/manage" className="rpg-button-secondary">
-                Manage Quests
-              </a>
-            </div>
-            <HabitList />
-          </div>
-
-          {/* Epic Quests */}
-          <div className="rpg-panel">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-pixel text-rpg-light">Epic Quests</h2>
-              <a href="/manage" className="rpg-button-secondary">
-                Manage Quests
-              </a>
-            </div>
-            <GoalList />
+          <div className="md:col-span-2">
+            <h2 className="text-2xl font-pixel text-rpg-light mb-6">Daily Quests</h2>
+            <HabitList habits={habits} setHabits={setHabits} />
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-export default function DashboardPageWrapper() {
+export default function Dashboard() {
   return (
     <AuthWrapper>
       <DashboardPage />

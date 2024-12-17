@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '../lib/supabase';
-import { Habit } from '../types/database';
+import type { Habit } from '../types/database';
 
 interface HabitListProps {
-  onUpdate?: (habits: Habit[]) => void;
+  habits: Habit[];
+  setHabits: React.Dispatch<React.SetStateAction<Habit[]>>;
 }
 
-export default function HabitList({ onUpdate }: HabitListProps) {
-  const [habits, setHabits] = useState<Habit[]>([]);
+export default function HabitList({ habits, setHabits }: HabitListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const supabase = createClient();
@@ -15,12 +15,6 @@ export default function HabitList({ onUpdate }: HabitListProps) {
   useEffect(() => {
     loadHabits();
   }, []);
-
-  useEffect(() => {
-    if (onUpdate) {
-      onUpdate(habits);
-    }
-  }, [habits, onUpdate]);
 
   const loadHabits = async () => {
     try {
@@ -39,25 +33,48 @@ export default function HabitList({ onUpdate }: HabitListProps) {
       if (habitsError) throw habitsError;
       setHabits(habits || []);
     } catch (err) {
-      setError('Failed to load habits');
-      console.error('Error loading habits:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load habits');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (habitId: string) => {
+  const completeHabit = async (habitId: string) => {
     try {
-      const { error } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const habit = habits.find(h => h.id === habitId);
+      if (!habit) return;
+
+      const { error: logError } = await supabase
+        .from('habit_logs')
+        .insert({
+          habit_id: habitId,
+          user_id: user.id,
+          character_id: habit.character_id
+        });
+
+      if (logError) throw logError;
+
+      // Update habit streak
+      const { data: updatedHabit, error: updateError } = await supabase
         .from('habits')
-        .delete()
-        .eq('id', habitId);
+        .update({
+          streak: habit.streak + 1,
+          last_completed: new Date().toISOString()
+        })
+        .eq('id', habitId)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      setHabits(prev => prev.filter(h => h.id !== habitId));
+      setHabits(prev => prev.map(h => 
+        h.id === habitId ? { ...h, ...updatedHabit } : h
+      ));
     } catch (err) {
-      console.error('Error deleting habit:', err);
+      console.error('Error completing habit:', err);
     }
   };
 
@@ -79,9 +96,8 @@ export default function HabitList({ onUpdate }: HabitListProps) {
 
   if (habits.length === 0) {
     return (
-      <div className="text-rpg-light text-center py-8">
-        <p>No daily quests added yet.</p>
-        <p className="text-rpg-light-darker mt-2">Add some quests to begin your journey!</p>
+      <div className="rpg-panel text-center py-8">
+        <p className="text-rpg-light-darker">No daily quests yet. Add one to begin your journey!</p>
       </div>
     );
   }
@@ -89,27 +105,21 @@ export default function HabitList({ onUpdate }: HabitListProps) {
   return (
     <div className="space-y-4">
       {habits.map((habit) => (
-        <div key={habit.id} className="rpg-panel-secondary p-4">
-          <div className="flex justify-between items-center">
+        <div key={habit.id} className="rpg-panel">
+          <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-pixel text-rpg-light">{habit.name}</h3>
-              <div className="text-sm text-rpg-light-darker">
-                {habit.frequency} • Target: {habit.target_days} days
-              </div>
-              {habit.streak > 0 && (
-                <div className="text-sm text-rpg-primary mt-1">
-                  🔥 {habit.streak} day streak!
-                </div>
-              )}
+              <h3 className="text-lg font-semibold text-rpg-light">{habit.name}</h3>
+              <p className="text-rpg-light-darker">
+                Streak: {habit.streak} days | Target: {habit.target_days} days
+              </p>
             </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handleDelete(habit.id)}
-                className="rpg-button-ghost text-red-500"
-              >
-                Delete
-              </button>
-            </div>
+            <button
+              onClick={() => completeHabit(habit.id)}
+              className="rpg-button-secondary"
+              disabled={new Date(habit.last_completed || 0).toDateString() === new Date().toDateString()}
+            >
+              Complete
+            </button>
           </div>
         </div>
       ))}

@@ -1,129 +1,106 @@
-import { useEffect, useState } from 'react';
-import { createClient } from '../lib/supabase';
 import type { Character } from '../types/character';
-import CharacterAvatar from './CharacterAvatar';
 
 interface CharacterDisplayProps {
-  characterId?: string;
-  showStats?: boolean;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  character: Character;
 }
 
-export default function CharacterDisplay({ characterId, showStats = true, size = 'lg' }: CharacterDisplayProps) {
-  const [character, setCharacter] = useState<Character | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const supabase = createClient();
-
-  useEffect(() => {
-    loadCharacter();
-  }, [characterId]);
-
-  const loadCharacter = async () => {
-    try {
-      setLoading(true);
-      setError('');
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data: character, error: characterError } = await supabase
-        .from('characters')
-        .select(`
-          *,
-          character_appearance:character_appearances(*)
-        `)
-        .eq('id', characterId || user.id)
-        .single();
-
-      if (characterError) throw characterError;
-      if (!character) throw new Error('Character not found');
-
-      setCharacter(character as Character);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load character');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rpg-primary"></div>
-      </div>
-    );
-  }
-
-  if (error || !character) {
-    return (
-      <div className="text-red-500 text-center py-4">
-        {error || 'Failed to load character'}
-      </div>
-    );
-  }
-
+export default function CharacterDisplay({ character }: CharacterDisplayProps) {
   return (
     <div className="rpg-panel">
-      <div className="flex items-center space-x-6">
-        <CharacterAvatar
-          appearance={character.character_appearance}
-          size={size}
-        />
-        <div>
-          <h2 className="text-2xl font-pixel text-rpg-light">{character.name}</h2>
-          <div className="text-rpg-light-darker">Level {character.level}</div>
-        </div>
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-pixel text-rpg-primary">{character.name}</h2>
+        <p className="text-rpg-light">Level {character.level}</p>
       </div>
 
-      {showStats && (
-        <div className="mt-6 grid grid-cols-2 gap-4">
-          {/* Experience Bar */}
-          <div className="col-span-2">
-            <div className="flex justify-between text-sm text-rpg-light-darker mb-1">
-              <span>Experience</span>
-              <span>{character.experience} XP</span>
+      <div className="space-y-4">
+        {/* Stats */}
+        <div>
+          <h3 className="text-lg font-pixel text-rpg-light mb-2">Stats</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-rpg-light-darker">Strength</p>
+              <div className="rpg-progress-bar">
+                <div
+                  className="rpg-progress-fill bg-red-500"
+                  style={{ width: `${(character.strength / 100) * 100}%` }}
+                />
+                <span className="rpg-progress-text">{character.strength}</span>
+              </div>
             </div>
-            <div className="h-2 bg-rpg-dark-lighter rounded-full overflow-hidden">
-              <div
-                className="h-full bg-rpg-primary"
-                style={{ width: `${(character.experience / (character.level * 1000)) * 100}%` }}
-              />
+            <div>
+              <p className="text-rpg-light-darker">Agility</p>
+              <div className="rpg-progress-bar">
+                <div
+                  className="rpg-progress-fill bg-green-500"
+                  style={{ width: `${(character.agility / 100) * 100}%` }}
+                />
+                <span className="rpg-progress-text">{character.agility}</span>
+              </div>
             </div>
-          </div>
-
-          {/* Stats */}
-          <div>
-            <div className="text-sm text-rpg-light-darker mb-1">Strength</div>
-            <div className="h-2 bg-rpg-dark-lighter rounded-full overflow-hidden">
-              <div
-                className="h-full bg-rarity-rare"
-                style={{ width: `${(character.strength / 20) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="text-sm text-rpg-light-darker mb-1">Agility</div>
-            <div className="h-2 bg-rpg-dark-lighter rounded-full overflow-hidden">
-              <div
-                className="h-full bg-rarity-epic"
-                style={{ width: `${(character.agility / 20) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <div className="text-sm text-rpg-light-darker mb-1">Intelligence</div>
-            <div className="h-2 bg-rpg-dark-lighter rounded-full overflow-hidden">
-              <div
-                className="h-full bg-rarity-legendary"
-                style={{ width: `${(character.intelligence / 20) * 100}%` }}
-              />
+            <div>
+              <p className="text-rpg-light-darker">Intelligence</p>
+              <div className="rpg-progress-bar">
+                <div
+                  className="rpg-progress-fill bg-blue-500"
+                  style={{ width: `${(character.intelligence / 100) * 100}%` }}
+                />
+                <span className="rpg-progress-text">{character.intelligence}</span>
+              </div>
             </div>
           </div>
         </div>
-      )}
+
+        {/* Experience */}
+        <div>
+          <h3 className="text-lg font-pixel text-rpg-light mb-2">Experience</h3>
+          <div className="rpg-progress-bar">
+            <div
+              className="rpg-progress-fill bg-yellow-500"
+              style={{ width: `${(character.experience / (character.level * 1000)) * 100}%` }}
+            />
+            <span className="rpg-progress-text">
+              {character.experience} / {character.level * 1000}
+            </span>
+          </div>
+        </div>
+
+        {/* Character Appearance */}
+        {character.character_appearance && (
+          <div>
+            <h3 className="text-lg font-pixel text-rpg-light mb-2">Appearance</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-rpg-light-darker">Hair</p>
+                <div
+                  className="w-8 h-8 rounded-full border-2 border-rpg-dark"
+                  style={{ backgroundColor: character.character_appearance.hair_color }}
+                />
+              </div>
+              <div>
+                <p className="text-rpg-light-darker">Eyes</p>
+                <div
+                  className="w-8 h-8 rounded-full border-2 border-rpg-dark"
+                  style={{ backgroundColor: character.character_appearance.eye_color }}
+                />
+              </div>
+              <div>
+                <p className="text-rpg-light-darker">Skin</p>
+                <div
+                  className="w-8 h-8 rounded-full border-2 border-rpg-dark"
+                  style={{ backgroundColor: character.character_appearance.skin_color }}
+                />
+              </div>
+              <div>
+                <p className="text-rpg-light-darker">Outfit</p>
+                <div
+                  className="w-8 h-8 rounded-full border-2 border-rpg-dark"
+                  style={{ backgroundColor: character.character_appearance.outfit_color }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

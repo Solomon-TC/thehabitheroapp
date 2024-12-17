@@ -1,13 +1,24 @@
 import { useEffect, useState } from 'react';
-import { getCharacter, getCharacterStats, calculateRequiredXP } from '../utils/character';
-import type { Stats } from '../types/database';
+import { getCharacter } from '../utils/character';
 import type { Character } from '../types/character';
+import AuthWrapper from '../components/AuthWrapper';
+import { createClient } from '../lib/supabase';
 
-export default function ProgressReport() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+interface Stats {
+  totalHabits: number;
+  completedHabits: number;
+  totalGoals: number;
+  completedGoals: number;
+  currentStreak: number;
+  longestStreak: number;
+}
+
+function ProgressReportPage() {
   const [character, setCharacter] = useState<Character | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const supabase = createClient();
 
   useEffect(() => {
     loadData();
@@ -17,12 +28,51 @@ export default function ProgressReport() {
     try {
       setLoading(true);
       setError('');
-      
+
+      // Load character
       const characterData = await getCharacter();
       setCharacter(characterData);
-      
-      const statsData = await getCharacterStats(characterData.id);
-      setStats(statsData);
+
+      // Load stats
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Get habits stats
+      const { data: habits } = await supabase
+        .from('habits')
+        .select('*')
+        .eq('user_id', user.id);
+
+      const { data: habitLogs } = await supabase
+        .from('habit_logs')
+        .select('*')
+        .eq('user_id', user.id);
+
+      // Get goals stats
+      const { data: goals } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', user.id);
+
+      // Calculate stats
+      const totalHabits = habits?.length || 0;
+      const completedHabits = habitLogs?.length || 0;
+      const totalGoals = goals?.length || 0;
+      const completedGoals = goals?.filter(g => g.status === 'completed').length || 0;
+
+      // Calculate streaks
+      const streaks = habits?.map(habit => habit.streak) || [];
+      const currentStreak = Math.max(...streaks, 0);
+      const longestStreak = currentStreak; // This should be stored in the database for accuracy
+
+      setStats({
+        totalHabits,
+        completedHabits,
+        totalGoals,
+        completedGoals,
+        currentStreak,
+        longestStreak
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load progress data');
     } finally {
@@ -38,131 +88,75 @@ export default function ProgressReport() {
     );
   }
 
-  if (error || !character || !stats) {
+  if (error) {
     return (
       <div className="text-red-500 text-center py-4">
-        {error || 'Failed to load progress report'}
+        {error}
       </div>
     );
   }
 
-  const nextLevelXP = calculateRequiredXP(character.level + 1);
-  const currentLevelXP = calculateRequiredXP(character.level);
-  const progressToNextLevel = ((character.experience - currentLevelXP) / (nextLevelXP - currentLevelXP)) * 100;
-
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-pixel text-rpg-primary mb-8">Adventure Progress</h1>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-pixel text-rpg-primary mb-8">Progress Report</h1>
 
-      {/* Character Overview */}
-      <div className="rpg-panel mb-8">
-        <h2 className="text-2xl font-pixel text-rpg-light mb-4">{character.name}</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div>
-            <div className="text-sm text-rpg-light-darker">Level</div>
-            <div className="text-2xl font-semibold text-rpg-light">{character.level}</div>
-          </div>
-          <div>
-            <div className="text-sm text-rpg-light-darker">Experience</div>
-            <div className="text-2xl font-semibold text-rpg-light">{character.experience} XP</div>
-          </div>
-          <div>
-            <div className="text-sm text-rpg-light-darker">Next Level</div>
-            <div className="text-2xl font-semibold text-rpg-light">{nextLevelXP} XP</div>
-          </div>
-          <div>
-            <div className="text-sm text-rpg-light-darker">Progress</div>
-            <div className="text-2xl font-semibold text-rpg-light">{Math.round(progressToNextLevel)}%</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Character Stats */}
-        <div className="rpg-panel">
-          <h3 className="text-xl font-pixel text-rpg-light mb-4">Character Stats</h3>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-rpg-light-darker">Strength</span>
-                <span className="text-sm text-rpg-light">{character.strength}</span>
+      {character && stats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Character Progress */}
+          <div className="rpg-panel">
+            <h2 className="text-2xl font-pixel text-rpg-light mb-6">Character Progress</h2>
+            <div className="space-y-4">
+              <div>
+                <p className="text-rpg-light-darker">Level</p>
+                <p className="text-2xl text-rpg-primary">{character.level}</p>
               </div>
-              <div className="progress-bar">
-                <div
-                  className="progress-bar-fill bg-rarity-rare"
-                  style={{ width: `${(character.strength / 20) * 100}%` }}
-                />
+              <div>
+                <p className="text-rpg-light-darker">Experience</p>
+                <div className="rpg-progress-bar">
+                  <div
+                    className="rpg-progress-fill bg-rpg-primary"
+                    style={{ width: `${(character.experience / (character.level * 1000)) * 100}%` }}
+                  />
+                  <span className="rpg-progress-text">
+                    {character.experience} / {character.level * 1000}
+                  </span>
+                </div>
               </div>
             </div>
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-rpg-light-darker">Agility</span>
-                <span className="text-sm text-rpg-light">{character.agility}</span>
+          </div>
+
+          {/* Quest Stats */}
+          <div className="rpg-panel">
+            <h2 className="text-2xl font-pixel text-rpg-light mb-6">Quest Stats</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-rpg-light-darker">Daily Quests</p>
+                <p className="text-2xl text-rpg-primary">{stats.completedHabits} / {stats.totalHabits}</p>
               </div>
-              <div className="progress-bar">
-                <div
-                  className="progress-bar-fill bg-rarity-epic"
-                  style={{ width: `${(character.agility / 20) * 100}%` }}
-                />
+              <div>
+                <p className="text-rpg-light-darker">Long-term Quests</p>
+                <p className="text-2xl text-rpg-primary">{stats.completedGoals} / {stats.totalGoals}</p>
               </div>
-            </div>
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-rpg-light-darker">Intelligence</span>
-                <span className="text-sm text-rpg-light">{character.intelligence}</span>
+              <div>
+                <p className="text-rpg-light-darker">Current Streak</p>
+                <p className="text-2xl text-rpg-primary">{stats.currentStreak} days</p>
               </div>
-              <div className="progress-bar">
-                <div
-                  className="progress-bar-fill bg-rarity-legendary"
-                  style={{ width: `${(character.intelligence / 20) * 100}%` }}
-                />
+              <div>
+                <p className="text-rpg-light-darker">Longest Streak</p>
+                <p className="text-2xl text-rpg-primary">{stats.longestStreak} days</p>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Achievement Stats */}
-        <div className="rpg-panel">
-          <h3 className="text-xl font-pixel text-rpg-light mb-4">Achievements</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm text-rpg-light-darker">Daily Quests</div>
-              <div className="text-2xl font-semibold text-rpg-light">{stats.habits_completed}</div>
-            </div>
-            <div>
-              <div className="text-sm text-rpg-light-darker">Epic Quests</div>
-              <div className="text-2xl font-semibold text-rpg-light">{stats.goals_completed}</div>
-            </div>
-            <div>
-              <div className="text-sm text-rpg-light-darker">Best Streak</div>
-              <div className="text-2xl font-semibold text-rpg-light">{stats.max_streak} days</div>
-            </div>
-            <div>
-              <div className="text-sm text-rpg-light-darker">Achievements</div>
-              <div className="text-2xl font-semibold text-rpg-light">{stats.achievements_unlocked}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Level Progress */}
-      <div className="rpg-panel">
-        <h3 className="text-xl font-pixel text-rpg-light mb-4">Level Progress</h3>
-        <div className="space-y-2">
-          <div className="progress-bar">
-            <div
-              className="progress-bar-fill"
-              style={{ width: `${progressToNextLevel}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-sm text-rpg-light-darker">
-            <span>Level {character.level}</span>
-            <span>{Math.round(progressToNextLevel)}%</span>
-            <span>Level {character.level + 1}</span>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
+  );
+}
+
+export default function ProgressReport() {
+  return (
+    <AuthWrapper>
+      <ProgressReportPage />
+    </AuthWrapper>
   );
 }

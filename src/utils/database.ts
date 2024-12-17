@@ -4,209 +4,131 @@ import { XP_REWARDS } from '../types/character';
 import type { Habit, Goal, HabitLog, GoalProgress } from '../types/database';
 
 // Get the user's character ID
-async function getUserCharacterId() {
+export async function getCharacterId() {
   const supabase = createClientComponentClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data: character, error: characterError } = await supabase
+  const { data: character } = await supabase
     .from('characters')
     .select('id')
     .eq('user_id', user.id)
     .single();
 
-  if (characterError) throw characterError;
   if (!character) throw new Error('Character not found');
-
   return character.id;
 }
 
-// Habits
-export async function getUserHabits() {
+// Complete a habit
+export async function completeHabit(habit: Habit) {
   const supabase = createClientComponentClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  const characterId = await getUserCharacterId();
-
-  const { data: habits, error } = await supabase
-    .from('habits')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('character_id', characterId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return habits;
-}
-
-export async function createHabit(name: string, frequency: string, target_days: number) {
-  const supabase = createClientComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const characterId = await getUserCharacterId();
-
-  const { data: habit, error } = await supabase
-    .from('habits')
-    .insert({
-      user_id: user.id,
-      character_id: characterId,
-      name,
-      frequency,
-      target_days
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return habit;
-}
-
-export async function completeHabit(habitId: string) {
-  const supabase = createClientComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const characterId = await getUserCharacterId();
-
-  // Log habit completion
+  // Add habit log
   const { error: logError } = await supabase
     .from('habit_logs')
     .insert({
-      habit_id: habitId,
+      habit_id: habit.id,
       user_id: user.id,
-      character_id: characterId,
-      completed_at: new Date().toISOString()
+      character_id: habit.character_id
     });
 
   if (logError) throw logError;
 
-  // Add XP for completing habit
-  await addExperience(characterId, XP_REWARDS.COMPLETE_HABIT);
+  // Calculate streak bonus and XP
+  const streakBonus = calculateStreakBonus(habit.streak);
+  const xpGained = XP_REWARDS.COMPLETE_HABIT + streakBonus;
 
-  // Calculate and award streak bonus
-  const streak = await calculateStreakBonus(characterId, habitId);
-
-  // Check for achievements
-  await checkAchievements(characterId);
-}
-
-// Goals
-export async function getUserGoals() {
-  const supabase = createClientComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const characterId = await getUserCharacterId();
-
-  const { data: goals, error } = await supabase
-    .from('goals')
-    .select('*')
-    .eq('user_id', user.id)
-    .eq('character_id', characterId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return goals;
-}
-
-export async function createGoal(
-  name: string,
-  description: string | null,
-  target_value: number,
-  current_value: number,
-  unit: string | null,
-  deadline: string | null
-) {
-  const supabase = createClientComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const characterId = await getUserCharacterId();
-
-  const { data: goal, error } = await supabase
-    .from('goals')
-    .insert({
-      user_id: user.id,
-      character_id: characterId,
-      name,
-      description,
-      target_value,
-      current_value,
-      unit,
-      deadline,
-      status: 'in_progress'
+  // Update habit streak
+  const { data: updatedHabit, error: updateError } = await supabase
+    .from('habits')
+    .update({
+      streak: habit.streak + 1,
+      last_completed: new Date().toISOString()
     })
+    .eq('id', habit.id)
     .select()
     .single();
 
-  if (error) throw error;
-  return goal;
+  if (updateError) throw updateError;
+
+  // Add experience
+  await addExperience(habit.character_id, xpGained);
+  await checkAchievements(habit.character_id);
+
+  return updatedHabit;
 }
 
-export async function updateGoalProgress(
-  goalId: string,
-  currentValue: number,
-  notes: string | null = null
-) {
+// Update goal progress
+export async function updateGoalProgress(goal: Goal, value: number) {
   const supabase = createClientComponentClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  const characterId = await getUserCharacterId();
+  const newValue = goal.current_value + value;
+  const status = newValue >= goal.target_value ? 'completed' : 'in_progress';
+  const wasCompleted = goal.status !== 'completed' && status === 'completed';
 
-  // Get the goal to check if it's completed
-  const { data: goal, error: goalError } = await supabase
-    .from('goals')
-    .select('target_value, status')
-    .eq('id', goalId)
-    .single();
-
-  if (goalError) throw goalError;
-
-  // Update goal progress
-  const { error: updateError } = await supabase
+  // Update goal
+  const { data: updatedGoal, error: updateError } = await supabase
     .from('goals')
     .update({
-      current_value: currentValue,
-      status: currentValue >= goal.target_value ? 'completed' : 'in_progress',
-      updated_at: new Date().toISOString()
+      current_value: newValue,
+      status
     })
-    .eq('id', goalId);
+    .eq('id', goal.id)
+    .select()
+    .single();
 
   if (updateError) throw updateError;
 
-  // Log progress
-  const { error: logError } = await supabase
+  // Add progress log
+  const { error: progressError } = await supabase
     .from('goal_progress')
     .insert({
-      goal_id: goalId,
+      goal_id: goal.id,
       user_id: user.id,
-      character_id: characterId,
-      value: currentValue,
-      notes
+      character_id: goal.character_id,
+      value
     });
 
-  if (logError) throw logError;
+  if (progressError) throw progressError;
 
-  // If goal is newly completed, add XP and check achievements
-  if (currentValue >= goal.target_value && goal.status !== 'completed') {
-    await addExperience(characterId, XP_REWARDS.COMPLETE_GOAL);
-    await checkAchievements(characterId);
+  // Add experience if goal was completed
+  if (wasCompleted) {
+    await addExperience(goal.character_id, XP_REWARDS.COMPLETE_GOAL);
+    await checkAchievements(goal.character_id);
+  } else {
+    // Add milestone experience
+    await addExperience(goal.character_id, XP_REWARDS.GOAL_MILESTONE);
   }
+
+  return updatedGoal;
 }
 
-export async function deleteGoal(goalId: string) {
+// Get habit logs for a specific habit
+export async function getHabitLogs(habitId: string) {
   const supabase = createClientComponentClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
-  const { error } = await supabase
-    .from('goals')
-    .delete()
-    .eq('id', goalId)
-    .eq('user_id', user.id);
+  const { data: logs, error } = await supabase
+    .from('habit_logs')
+    .select('*')
+    .eq('habit_id', habitId)
+    .order('completed_at', { ascending: false });
 
   if (error) throw error;
+  return logs;
+}
+
+// Get goal progress for a specific goal
+export async function getGoalProgress(goalId: string) {
+  const supabase = createClientComponentClient();
+  const { data: progress, error } = await supabase
+    .from('goal_progress')
+    .select('*')
+    .eq('goal_id', goalId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return progress;
 }
