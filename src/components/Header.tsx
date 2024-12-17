@@ -34,46 +34,39 @@ export default function Header() {
 
   const isActive = (path: string) => router.pathname === path;
 
+  const NavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <Link 
+      href={href}
+      className={`nav-link ${isActive(href) ? 'active' : ''}`}
+    >
+      {children}
+    </Link>
+  );
+
+  const MobileNavLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <Link 
+      href={href}
+      className={`nav-link-mobile ${isActive(href) ? 'active' : ''}`}
+    >
+      {children}
+    </Link>
+  );
+
   return (
     <header className="bg-rpg-dark border-b border-rpg-accent">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-8">
-            <Link href="/" className="text-2xl font-pixel text-rpg-primary">
+            <Link href="/dashboard" className="text-2xl font-pixel text-rpg-primary">
               HabitQuest
             </Link>
             
             <nav className="hidden md:flex space-x-4">
-              <Link
-                href="/dashboard"
-                className={`nav-link ${isActive('/dashboard') ? 'active' : ''}`}
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/manage"
-                className={`nav-link ${isActive('/manage') ? 'active' : ''}`}
-              >
-                Quests
-              </Link>
-              <Link
-                href="/progress-report"
-                className={`nav-link ${isActive('/progress-report') ? 'active' : ''}`}
-              >
-                Progress
-              </Link>
-              <Link
-                href="/friends"
-                className={`nav-link ${isActive('/friends') ? 'active' : ''}`}
-              >
-                Friends
-              </Link>
-              <Link
-                href="/feedback"
-                className={`nav-link ${isActive('/feedback') ? 'active' : ''}`}
-              >
-                Feedback
-              </Link>
+              <NavLink href="/dashboard">Dashboard</NavLink>
+              <NavLink href="/manage">Quests</NavLink>
+              <NavLink href="/progress-report">Progress</NavLink>
+              <NavLink href="/friends">Friends</NavLink>
+              <NavLink href="/feedback">Feedback</NavLink>
             </nav>
           </div>
 
@@ -103,36 +96,11 @@ export default function Header() {
         {/* Mobile Navigation */}
         <nav className="md:hidden pb-4">
           <div className="grid grid-cols-2 gap-2">
-            <Link
-              href="/dashboard"
-              className={`nav-link-mobile ${isActive('/dashboard') ? 'active' : ''}`}
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/manage"
-              className={`nav-link-mobile ${isActive('/manage') ? 'active' : ''}`}
-            >
-              Quests
-            </Link>
-            <Link
-              href="/progress-report"
-              className={`nav-link-mobile ${isActive('/progress-report') ? 'active' : ''}`}
-            >
-              Progress
-            </Link>
-            <Link
-              href="/friends"
-              className={`nav-link-mobile ${isActive('/friends') ? 'active' : ''}`}
-            >
-              Friends
-            </Link>
-            <Link
-              href="/feedback"
-              className={`nav-link-mobile ${isActive('/feedback') ? 'active' : ''}`}
-            >
-              Feedback
-            </Link>
+            <MobileNavLink href="/dashboard">Dashboard</MobileNavLink>
+            <MobileNavLink href="/manage">Quests</MobileNavLink>
+            <MobileNavLink href="/progress-report">Progress</MobileNavLink>
+            <MobileNavLink href="/friends">Friends</MobileNavLink>
+            <MobileNavLink href="/feedback">Feedback</MobileNavLink>
           </div>
         </nav>
       </div>
